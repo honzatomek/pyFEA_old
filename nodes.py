@@ -28,9 +28,9 @@ class Nodes:
         self.local_ids = []
         self.nodes = []
         if file:
-            self.__parse_file(file)
+            self.read_file(file)
         if array:
-            self.__parse_array(array)
+            self.read_array(array)
 
     def add(self, id = 0, type = '3D', coor = [0.0, 0.0, 0.0], csys_def = 0, csys_out = 0, name = None):
         self.number += 1
@@ -74,6 +74,12 @@ class Nodes:
             if self.nodes[i].id == id:
                 return self.nodes[i]
         return None
+
+    def read_file(self, file):
+        pass
+
+    def read_array(self, array):
+        pass
 
     @staticmethod
     def __parse_file(file):
