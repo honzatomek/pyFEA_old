@@ -1,23 +1,13 @@
 # Nodes
+import template
 
-class Element:
+
+class Beam(template.Data):
+    _instances = set()
+
     def __init__(self, id, pID):
         self.id = id
         self. pID = pID
-
-
-class Element1D(Element):
-    def __init__(self, id, ndA, ndB, pID):
-        super().__init__(id, pID)
-        self.ndA = ndA
-        self.ndB = ndB
-
-
-class Element2D(Element):
-    def __init__(self, id, ndA, ndB, ndC, pID):
-        super().__init__(id, pID)
-        self.ndA = ndA
-        self.ndB = ndB
 
 
 class Elements:
@@ -31,7 +21,7 @@ class Elements:
         if array:
             self.__parse_array(array)
 
-    def add(sellf, id, ndA = 0, ndB = 0, pID)
+    def add(sellf, id, ndA = 0, ndB = 0, pID):
         pass
 
     @staticmethod

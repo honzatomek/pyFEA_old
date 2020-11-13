@@ -1,6 +1,8 @@
 import numpy
 import math
 import weakref
+import logging
+
 
 class Error(Exception):
     pass
@@ -8,6 +10,12 @@ class Error(Exception):
 
 class DuplicateIDError(Error):
     pass
+
+class InstanceCounterMeta(type):
+    '''
+    Meta class with instances counter
+    '''
+
 
 
 class Data:
@@ -44,6 +52,7 @@ class Data:
 
 
 class DataSet(Data):
+    _title = 'DATASET'
     _type = Data
     _instances = set()
 
@@ -63,17 +72,21 @@ class DataSet(Data):
         self._iter += 1
         return self._data[list(self._data.keys())[self._iter - 1]]
 
+    def __len__(self):
+        return self._total
+
     def print(self):
-        print('{0:8n} - {1:16s}'.format(self._id, self._name))
+        print('${0:s} ID = {1:n} NAME = \'{2:s}\''.format(self._title, self._id, self._name))
+        for i, id in enumerate(sorted([int(id) for id in self._data.keys()])):
+            print('{0:8n}'.format(self._data[str(id)].id()), end='')
+            if (i + 1) % 8 == 0:
+                print()
 
     def add(self, id, name):
         if str(id) in self._data.keys():
             raise DuplicateIDError('Duplicate ID: {0}'.format(id))
         self._data.setdefault(str(id), self._type(id, name))
         self._total += 1
-
-    def __len__(self):
-        return self._total
 
     def get(self, id):
         return self._data[id]
@@ -106,12 +119,33 @@ class DataSet(Data):
                 dead.add(ref)
         cls._instances -= dead
 
+    @classmethod
+    def merge_all(cls):
+        result = DataSet(0, cls._title)
+        for ds in cls.get_instances():
+            if ds.id() != result.id():
+                result._data.update(ds._data)
+                result._total += ds._total
+        return result
+
+
+def merge(objects):
+    result = type(objects[0])(0, str(type(objects[0])))
+    for i in range(len(objects)):
+        result._data.update(objects[i]._data)
+    result._total = len(result._data.keys())
+    return result
+
 
 if __name__ == '__main__':
     a = DataSet(1, 'test 1')
+    b = DataSet(2, 'test 2')
+    for i in range(10):
+        a.add(i + 1, 'test ' + str(i + 1))
+        b.add(i + 101, 'test ' + str(i + 101))
+    c = DataSet.merge_all()
 
-    a.add(1, 'test data 1')
-    a.add(a.get_free_id(), 'test data 2')
+    for z in c:
+        print(str(z))
 
-    for d in a:
-        print(str(d))
+    c.print()
