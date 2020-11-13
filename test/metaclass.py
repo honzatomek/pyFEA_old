@@ -6,7 +6,7 @@
 import weakref
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)-8s%(levelname)-8s%(message)s', datefmt='%H%M%S')
 
 
 class MetaCount(type):
