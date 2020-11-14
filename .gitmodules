@@ -1,5 +1,0 @@
-[submodule "res/examples/pyEngine3D"]
-	path = res/examples/pyEngine3D
-	url = https://github.com/hnhaefliger/pyEngine3D.git
-[submodule "res\\examples\\pyEngine3D\\"]
-	url = git@github.com:honzatomek/pyEngine3D.git
