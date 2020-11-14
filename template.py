@@ -11,7 +11,8 @@ class Error(Exception):
 class DuplicateIDError(Error):
     pass
 
-class InstanceCounterMeta(type):
+
+class InstanceSetMeta(type):
     '''
     Meta class with instances counter
     '''
