@@ -211,6 +211,7 @@ def assemble(lm: np.ndarray, K: np.ndarray, ke: np.ndarray, eID: int):
                 ja = lm[eID - 1][j]
                 if ja != 0:
                     K[ia - 1][ja - 1] += ke[i][j]
+    # K[lm[eID - 1] - 1, :][:, lm[eID - 1] - 1] += ke
 
 
 def assemble_load(lm: np.ndarray, f: np.ndarray, fe: np.ndarray, eID: int):
@@ -259,13 +260,13 @@ def beam2d_postpro(x1: np.ndarray, x2: np.ndarray, u: np.ndarray, EA: float=0.0,
     return s
 
 
-def load_dat(file: str, type: type=float):
+def load_dat(file: str, dtype: type=float):
     """
     Function to load dat file as numpy array
     """
-    logging.info(f'read {file} as {type.__name__}')
+    logging.info(f'read {file} as {dtype.__name__}')
     try:
-        m = np.loadtxt(file, ndmin=2, dtype=type)
+        m = np.loadtxt(file, ndmin=2, dtype=dtype)
         return m
     except Exception as e:
         logging.exception(f'Failed reading {file}')
@@ -277,16 +278,11 @@ def beam2d():
     cfg.read(os.path.join(os.path.dirname(__file__), 'structures/console/g.ini'))
 
     # array of coordinates
-    # xz = np.array([[0.0, 0.0],
-    #                [3.0, 0.0],
-    #                [6.0, 0.0]], dtype=float)
-    xz = load_dat(os.path.join(os.path.dirname(__file__), 'structures/console/xz.dat'), float)
+    xz = load_dat(os.path.join(os.path.dirname(__file__), 'structures/console/xz.dat'), dtype=float)
     logging.debug(f'xz:\n{xz}')
 
     # array of code numbers
-    # lm = np.array([[1, 2, 3, 4, 5, 6],
-    #                [4, 5, 6, 7, 8, 9]], dtype=int)
-    lm = load_dat(os.path.join(os.path.dirname(__file__), 'structures/console/lm.dat'), int)
+    lm = load_dat(os.path.join(os.path.dirname(__file__), 'structures/console/lm.dat'), dtype=int)
     logging.debug(f'lm:\n{lm}')
 
     # number of elements
@@ -295,8 +291,7 @@ def beam2d():
     ncdofs = int(cfg['DEFAULT']['constrained_dofs'])
 
     # load vector
-    # f[7] = 1.0
-    f = load_dat(os.path.join(os.path.dirname(__file__), 'structures/console/f.dat'), float)
+    f = load_dat(os.path.join(os.path.dirname(__file__), 'structures/console/f.dat'), dtype=float)
     logging.debug(f'f:\n{f}')
 
     # property values
@@ -304,52 +299,33 @@ def beam2d():
     EI = 1.0
 
     # preparation of load vector, stiffness matrix, displacement vector
-    # f = np.zeros((9, 1), dtype=float)
     K = np.zeros((ndofs, ndofs), dtype=float)
     u = np.zeros((ndofs, 1), dtype=float)
 
-    # creation of local stiffness matrix
-    # ke1 = beam2d_stiffness(xz[0], xz[1], EA, EI)
-    # logging.debug(f'ke1:\n{ke1}')
-    # ke2 = beam2d_stiffness(xz[1], xz[2], EA, EI)
-    # logging.debug(f'ke2:\n{ke2}')
+    # creation of local stiffness matrix and localisation
     ke = []
     for i in range(nelem):
         ke.append(beam2d_stiffness(xz[i, :2], xz[i, 2:], EA, EI))
         logging.debug(f'ke{i + 1}:\n{ke[i]}')
+        # localisation
         assemble(lm, K, ke[i], i + 1)
     logging.debug(f'K:\n{K}')
 
-    # localisation
-    # assemble(lm, K, ke1, 1)
-    # assemble(lm, K, ke2, 2)
-    # logging.debug(f'K:\n{K}')
-
     # solving the displacements
-    # print(f'K[3:, 3:] shape {K[3:, 3:].shape}')
     u[ncdofs:] = linalg.solve(K[ncdofs:, ncdofs:], f[ncdofs:])
     logging.info(f'u:\n{u}')
 
     # reactions
-    # f[:3] = K[:3, 3:].dot(u[3:])
     f[:ncdofs] = K[:ncdofs, ncdofs:] @ u[ncdofs:]
     logging.info(f'f:\n{f}')
 
     # element displacements
-    # u1 = u[lm[0, :] - 1]
-    # logging.info(f'u1:\n{u1}')
-    # u2 = u[lm[1, :] - 1]
-    # logging.info(f'u2:\n{u2}')
     ue = []
     for i in range(nelem):
         ue.append(u[lm[i, :] - 1])
-        logging.info(f'u{i + 1}: {ue[i]}')
+        logging.info(f'u{i + 1}:\n{ue[i]}')
 
     # element inner forces
-    # s1 = beam2d_postpro(xz[0], xz[1], u1, EA, EI)
-    # logging.info(f's1:\n{s1}')
-    # s2 = beam2d_postpro(xz[1], xz[2], u2, EA, EI)
-    # logging.info(f's2:\n{s2}')
     se = []
     for i in range(nelem):
         se.append(beam2d_postpro(xz[i, :2], xz[i, 2:], ue[i], EA, EI))
