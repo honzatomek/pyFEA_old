@@ -1,8 +1,8 @@
-import numpy
-import math
-import weakref
-import logging
+#!/usr/bin/python3.6
 
+from config import *
+
+import weakref
 
 class Error(Exception):
     pass
@@ -14,21 +14,44 @@ class DuplicateIDError(Error):
 
 class InstanceSetMeta(type):
     '''
-    Meta class with instances counter
+    Meta class with set of weak refs to all instances
     '''
+    def __new__(cls, name, bases, attrs):
+        new_cls = super(InstanceSetMeta, cls).__new__(cls, name, bases, attrs)
+        new_cls._instances = set()
+        return new_cls
 
 
-
-class Data:
-    _instances = set()
-
-    def __init__(self, id, name):
-        self._id = id
-        self._name = name
+class Data(metaclass=InstanceSetMeta):
+    '''
+    Basic Data class - id, name, set with all instances of the same subclass
+    '''
+    def __init__(self, id=-1, name=None):
         type(self)._instances.add(weakref.ref(self))
+        self._id = None
+        if id == -1 or id is None:
+            self._id = type(self).next_free_id()
+        else:
+            try:
+                exists = type(self).id_exists(id)
+                self._id = id
+            except DuplicateIDError as e:
+                logging.exception(f'Creation of instance of {type(self).__name__}'
+                                  f'failed, ID {id} already exists')
+
+        if name is None:
+            self._name = f'{self._id} - {type(self).__name__}'
+        else:
+            self._name = name
 
     def __str__(self):
         return '{0:8n} - {1:16s}'.format(self._id, self._name)
+
+    def __repr__(self):
+        return str(self)
+
+    def __del__(self):
+        type(self)._instances.remove(weakref.ref(self))
 
     def id(self):
         return self._id
@@ -37,8 +60,41 @@ class Data:
         return self._name
 
     @classmethod
+    def get_id(cls, id):
+        for instance in cls.get_instances():
+            if instance.id() == id:
+                return instance
+        return None
+
+    @classmethod
+    def remove(cls, id):
+        instance = cls.get_id(id)
+        if instance is not None:
+            cls._instances.remove(weakref.ref(instance))
+
+    @classmethod
     def count(cls):
         return len(cls._instances)
+
+    @classmethod
+    def id_exists(cls, id):
+        exists = False
+        for instance in cls.get_instances():
+            if instance.id() == id:
+                exists = True
+                # raise DuplicateIDError(f'Creation of instance of {cls.__name__}'
+                #                        f'failed, ID {id} already exists')
+                raise DuplicateIDError()
+        return exists
+
+
+    @classmethod
+    def next_free_id(cls):
+        id = 0
+        for instance in cls.get_instances():
+            if instance.id() > id:
+                id = instance.id() + 1
+        return id
 
     @classmethod
     def get_instances(cls):
@@ -53,15 +109,13 @@ class Data:
 
 
 class DataSet(Data):
-    _title = 'DATASET'
-    _type = Data
-    _instances = set()
-
+    '''
+    Basic class for data sets
+    '''
     def __init__(self, id, name):
         super().__init__(id, name)
         self._total = 0
         self._data = {}
-        type(self)._instances.add(weakref.ref(self))
 
     def __iter__(self):
         self._iter = 0
@@ -86,7 +140,7 @@ class DataSet(Data):
     def add(self, id, name):
         if str(id) in self._data.keys():
             raise DuplicateIDError('Duplicate ID: {0}'.format(id))
-        self._data.setdefault(str(id), self._type(id, name))
+        self._data.setdefault(str(id), type(self)(id, name))
         self._total += 1
 
     def get(self, id):
@@ -122,7 +176,7 @@ class DataSet(Data):
 
     @classmethod
     def merge_all(cls):
-        result = DataSet(0, cls._title)
+        result = DataSet(0, None)
         for ds in cls.get_instances():
             if ds.id() != result.id():
                 result._data.update(ds._data)
