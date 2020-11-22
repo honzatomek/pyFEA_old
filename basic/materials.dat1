@@ -1,0 +1,12 @@
+$MATERIAL ID = 1 TYPE = ISOTROPIC
+    $TITLE
+        S235
+    $YOUNG TYPE = CONST
+        210000.0
+    $POISSON TYPE = CONST
+        0.3
+    $DENSITY TYPE = CONST
+        7.85E-09
+    $EXPANSION TYPE = CONST
+        1.2E-05
+$END MATERIAL
