@@ -35,7 +35,7 @@ def beam2d_t(x1: np.ndarray, x2: np.ndarray):
     return t
 
 
-def beam2d_stiffness_lcs(l: float, EA: float, EI: float):
+def beam2d_stiffness_lcs(l: float=0.0, EA: float=0.0, EI: float=0.0):
     """
     Function to compute stiffness matrix of beam element in LCS (Kirchhoff, 2D)
     In:
@@ -59,7 +59,7 @@ def beam2d_stiffness_lcs(l: float, EA: float, EI: float):
     return ke
 
 
-def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, EA: float, EI: float):
+def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, EA: float=0.0, EI: float=0.0):
     """
     Function to compute stiffness matrix of beam element in GCS (Kirchhoff, 2D)
     In:
@@ -83,7 +83,7 @@ def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, EA: float, EI: float):
     return ke
 
 
-def beam2d_load(x1: np.ndarray, x2: np.ndarray, fx=0.0: float, fz=0.0: float, my=0.0: float):
+def beam2d_load(x1: np.ndarray, x2: np.ndarray, fx: float=0.0, fz: float=0.0, my: float=0.0):
     """
     Function computes element load vector from distributed elemental load (2D)
     In:
@@ -115,10 +115,12 @@ def beam2d_load(x1: np.ndarray, x2: np.ndarray, fx=0.0: float, fz=0.0: float, my
     return f
 
 
-def beam2d_temp(EA=0.0: float, a=0.0: float, t=0.0: float, t0=0.0: float):
+def beam2d_temp(x1: np.ndarray, x2: np.ndarray, EA: float=0.0, a: float=0.0, t: float=0.0, t0: float=0.0):
     """
     Function computes the load vector from uniform thermal load on beam in 2D
     In:
+        x1 - coordinates of start of element [x1, z1]
+        x2 - coordinates of end of element [x1, z1]
         EA - Youngs Modulus times section Area
         a  - Longitudiinal thermal expansion coefficient
         t  - uniform thermal load on beam element
@@ -143,7 +145,7 @@ def beam2d_temp(EA=0.0: float, a=0.0: float, t=0.0: float, t0=0.0: float):
     return f
 
 
-def beam2d_initialstress(x1: np.ndarray, x2: np.ndarray, N=0.0: float):
+def beam2d_initialstress(x1: np.ndarray, x2: np.ndarray, N: float=0.0):
     """
     Function computes the matrix of beam initial stresses for use in stability
     (Kirchhoff, 2D)
@@ -164,7 +166,7 @@ def beam2d_initialstress(x1: np.ndarray, x2: np.ndarray, N=0.0: float):
                              [0.0, -l / 10.0, 2.0 * l2 / 15.0, 0.0 , l / 10.0, -l2 / 30.0],
                              [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                              [0.0, -6.0 / 5.0, l / 10.0, 0.0, 6.0 / 5.0, l / 10.0],
-                             [0.0, -l / 10.0, -l2 / 30.0, 0.0 , l / 10.0, 2.0 * l2 / 15.0],
+                             [0.0, -l / 10.0, -l2 / 30.0, 0.0 , l / 10.0, 2.0 * l2 / 15.0]],
                             dtype=float)
     kl[0][0] = min(abs(kl[1][1]), abs(kl[2][2])) / 1000.0
     kl[0][3] = -kl[0][0]
@@ -221,15 +223,15 @@ def assemble_load(lm: np.ndarray, f: np.ndarray, fe: np.ndarray, eID: int):
             f[ia - 1][0] += fe[i][0]
 
 
-def beam2d_postpro(x1: np.ndarray, x2, np.ndarray, EA: float, EI: float, u: np.ndarray):
+def beam2d_postpro(x1: np.ndarray, x2: np.ndarray, u: np.ndarray, EA: float=0.0, EI: float=0.0):
     """
     Function to get element inner forces in LCS (2D)
     In:
         x1 - coordinates of start of element [x1, z1]
         x2 - coordinates of end of element [x1, z1]
+        u  - vector of beam end displacements in GCS (2D)
         EA - Youngs Modulus times section Area
         EI - Youngs Modulus times Moment of Inertia
-        u  - vector of beam end displacements in GCS (2D)
     Out:
         s  - vector of beam inner forces in LCS (2D)
     """
