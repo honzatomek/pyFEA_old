@@ -1,7 +1,11 @@
 # Beam cantilever
+"""
+Finite ELement Analysis of Beam structure in 2D (xz), Element formulation based on Kirchhoff equations
+"""
 
 import os, sys
 import math
+import argparse
 from configparser import ConfigParser
 import numpy as np
 from scipy import linalg
@@ -38,7 +42,7 @@ def beam2d_t(x1: np.ndarray, x2: np.ndarray):
     return t
 
 
-def beam2d_stiffness_lcs(l: float=0.0, EA: float=0.0, EI: float=0.0):
+def beam2d_stiffness_lcs(l: float = 0.0, EA: float = 0.0, EI: float = 0.0):
     """
     Function to compute stiffness matrix of beam element in LCS (Kirchhoff, 2D)
     In:
@@ -63,7 +67,7 @@ def beam2d_stiffness_lcs(l: float=0.0, EA: float=0.0, EI: float=0.0):
     return ke
 
 
-def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, EA: float=0.0, EI: float=0.0):
+def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, EA: float = 0.0, EI: float = 0.0):
     """
     Function to compute stiffness matrix of beam element in GCS (Kirchhoff, 2D)
     In:
@@ -88,7 +92,7 @@ def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, EA: float=0.0, EI: float=0.
     return ke
 
 
-def beam2d_load(x1: np.ndarray, x2: np.ndarray, fx: float=0.0, fz: float=0.0, my: float=0.0):
+def beam2d_load(x1: np.ndarray, x2: np.ndarray, fx: float = 0.0, fz: float = 0.0, my: float = 0.0):
     """
     Function computes element load vector from distributed elemental load (2D)
     In:
@@ -121,7 +125,7 @@ def beam2d_load(x1: np.ndarray, x2: np.ndarray, fx: float=0.0, fz: float=0.0, my
     return f
 
 
-def beam2d_temp(x1: np.ndarray, x2: np.ndarray, EA: float=0.0, a: float=0.0, t: float=0.0, t0: float=0.0):
+def beam2d_temp(x1: np.ndarray, x2: np.ndarray, EA: float = 0.0, a: float = 0.0, t: float = 0.0, t0: float = 0.0):
     """
     Function computes the load vector from uniform thermal load on beam in 2D
     In:
@@ -152,7 +156,7 @@ def beam2d_temp(x1: np.ndarray, x2: np.ndarray, EA: float=0.0, a: float=0.0, t: 
     return f
 
 
-def beam2d_initialstress(x1: np.ndarray, x2: np.ndarray, N: float=0.0):
+def beam2d_initialstress(x1: np.ndarray, x2: np.ndarray, N: float = 0.0):
     """
     Function computes the matrix of beam initial stresses for use in stability
     (Kirchhoff, 2D)
@@ -234,7 +238,7 @@ def assemble_load(lm: np.ndarray, f: np.ndarray, fe: np.ndarray, eID: int):
             f[ia - 1][0] += fe[i][0]
 
 
-def beam2d_postpro(x1: np.ndarray, x2: np.ndarray, u: np.ndarray, EA: float=0.0, EI: float=0.0):
+def beam2d_postpro(x1: np.ndarray, x2: np.ndarray, u: np.ndarray, EA: float = 0.0, EI: float = 0.0):
     """
     Function to get element inner forces in LCS (2D)
     In:
@@ -260,7 +264,7 @@ def beam2d_postpro(x1: np.ndarray, x2: np.ndarray, u: np.ndarray, EA: float=0.0,
     return s
 
 
-def load_dat(file: str, dtype: type=float):
+def load_dat(file: str, dtype: type = float):
     """
     Function to load dat file as numpy array
     """
@@ -272,17 +276,17 @@ def load_dat(file: str, dtype: type=float):
         logging.exception(f'Failed reading {file}')
 
 
-def beam2d():
+def beam2d(structure_directory: str = 'console'):
     logging.info('call beam2d()')
     cfg = ConfigParser()
-    cfg.read(os.path.join(os.path.dirname(__file__), 'structures/console/g.ini'))
+    cfg.read(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/g.ini'))
 
     # array of coordinates
-    xz = load_dat(os.path.join(os.path.dirname(__file__), 'structures/console/xz.dat'), dtype=float)
+    xz = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/xz.dat'), dtype=float)
     logging.debug(f'xz:\n{xz}')
 
     # array of code numbers
-    lm = load_dat(os.path.join(os.path.dirname(__file__), 'structures/console/lm.dat'), dtype=int)
+    lm = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/lm.dat'), dtype=int)
     logging.debug(f'lm:\n{lm}')
 
     # number of elements
@@ -291,7 +295,7 @@ def beam2d():
     ncdofs = int(cfg['DEFAULT']['constrained_dofs'])
 
     # load vector
-    f = load_dat(os.path.join(os.path.dirname(__file__), 'structures/console/f.dat'), dtype=float)
+    f = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/f.dat'), dtype=float)
     logging.debug(f'f:\n{f}')
 
     # property values
@@ -334,4 +338,9 @@ def beam2d():
 
 if __name__ == '__main__':
     logging.debug(f'{__file__} started')
-    beam2d()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('structure', type=str, help='directory name of structure from ./structures directory')
+
+    args = parser.parse_args()
+
+    beam2d(args.structure)
