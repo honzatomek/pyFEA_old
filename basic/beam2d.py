@@ -1,12 +1,14 @@
 # Beam cantilever
 
+import os, sys
 import math
+from configparser import ConfigParser
 import numpy as np
 from scipy import linalg
 
 import logging
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)6s *%(levelname).1s* %(message)s', datefmt='%H%M%S')
+logging.basicConfig(level=logging.INFO, format='%(asctime)6s *%(levelname).1s* %(message)s', datefmt='%H%M%S')
 
 
 def beam2d_t(x1: np.ndarray, x2: np.ndarray):
@@ -19,7 +21,8 @@ def beam2d_t(x1: np.ndarray, x2: np.ndarray):
     Out:
         t  - beam transformation matrix in 2D (6, 6)
     """
-    logging.debug(f'beam2d_t({x1}, {x2})')
+    logging.info(f'call beam2d_t()')
+    logging.debug(f'call beam2d_t({x1}, {x2})')
     length = math.sqrt((x2[0] - x1[0]) ** 2 + (x2[1] - x1[1]) ** 2)
     c = (x2[0] - x1[0]) / length
     s = (x2[1] - x1[1]) / length
@@ -45,7 +48,8 @@ def beam2d_stiffness_lcs(l: float=0.0, EA: float=0.0, EI: float=0.0):
     Out:
         ke - element stiffness matrix in 2D (6, 6)
     """
-    logging.debug(f'beam2d_stiffness_lcs({l}, {EA}, {EI})')
+    logging.info(f'call beam2d_stiffness_lcs()')
+    logging.debug(f'call beam2d_stiffness_lcs({l}, {EA}, {EI})')
     l2 = l * l
     l3 = l2 * l
     ke = np.array([[EA / l, 0.0, 0.0, -EA / l, 0.0, 0.0],
@@ -70,7 +74,8 @@ def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, EA: float=0.0, EI: float=0.
     Out:
         ke - element stiffness matrix in 2D (6, 6)
     """
-    logging.debug(f'beam2d_stiffness({x1}, {x2}, {EA}, {EI})')
+    logging.info(f'call beam2d_stiffness()')
+    logging.debug(f'call beam2d_stiffness({x1}, {x2}, {EA}, {EI})')
     length = math.sqrt((x2[0] - x1[0]) ** 2 + (x2[1] - x1[1]) ** 2)
     # local element stiffness
     kl = beam2d_stiffness_lcs(length, EA, EI)
@@ -97,13 +102,14 @@ def beam2d_load(x1: np.ndarray, x2: np.ndarray, fx: float=0.0, fz: float=0.0, my
     Out:
         f  - element load vector in 2D
     """
-    logging.debug(f'beam2d_load({x1}, {x2}, {fx}, {fz}, {my})')
+    logging.info(f'call beam2d_load()')
+    logging.debug(f'call beam2d_load({x1}, {x2}, {fx}, {fz}, {my})')
     length = math.sqrt((x2[0] - x1[0]) ** 2 + (x2[1] - x1[1]) ** 2)
     # load vector in LCS
     fl = np.array([fx * length / 2.0,
                    -fz * length / 2.0,
                    1 / 12 * fz * length * length,
-                   fx * l,
+                   fx * length,
                    - fz * length / 2.0,
                    - 1 / 12 * fz * length * length],
                   dtype=float)
@@ -128,6 +134,7 @@ def beam2d_temp(x1: np.ndarray, x2: np.ndarray, EA: float=0.0, a: float=0.0, t: 
     Out:
         f  - load vector from uniform thermal load on beam in 2D GCS
     """
+    logging.info(f'call beam2d_temp()')
     logging.debug(f'beam2d_temp({EA}, {a}, {t}, {t0})')
     fl = np.array([-EA * a * (t - t0),
                    0.0,
@@ -156,7 +163,8 @@ def beam2d_initialstress(x1: np.ndarray, x2: np.ndarray, N: float=0.0):
     Out:
         ks - matrix of element initial stresses in GCS (6, 6)
     """
-    logging.debug(f'beam2d_initialstress({x1}, {x2}, {N})')
+    logging.info(f'call beam2d_initialstress()')
+    logging.debug(f'call beam2d_initialstress({x1}, {x2}, {N})')
     length = math.sqrt((x2[0] - x1[0]) ** 2 + (x2[1] - x1[1]) ** 2)
     l = length
     l2 = l * l
@@ -193,7 +201,8 @@ def assemble(lm: np.ndarray, K: np.ndarray, ke: np.ndarray, eID: int):
     Out:
         K   - global stiffness matrix
     """
-    logging.debug(f'assemble() element {eID}')
+    logging.info(f'call assemble() element {eID}')
+    logging.debug(f'call assemble({lm}, {K}, {ke}, {eID})')
     ndof = ke.shape[0]
     for i in range(ndof):
         ia = lm[eID - 1][i]
@@ -215,7 +224,8 @@ def assemble_load(lm: np.ndarray, f: np.ndarray, fe: np.ndarray, eID: int):
     Out:
         f   - global load vector
     """
-    logging.debug(f'assemble_load() element {eID}')
+    logging.info(f'call assemble_load() element {eID}')
+    logging.debug(f'call assemble_load({lm}, {f}, {fe}, {eID})')
     ndof = f.shape[0]
     for i in range(ndof):
         ia = lm[eID - 1][i]
@@ -235,7 +245,8 @@ def beam2d_postpro(x1: np.ndarray, x2: np.ndarray, u: np.ndarray, EA: float=0.0,
     Out:
         s  - vector of beam inner forces in LCS (2D)
     """
-    logging.debug(f'beam2d_postpro({x1}, {x2}, {EA}, {EI}, {u})')
+    logging.info(f'call beam2d_postpro()')
+    logging.debug(f'call beam2d_postpro({x1}, {x2}, {u}, {EA}, {EI})')
     length = math.sqrt((x2[0] - x1[0]) ** 2 + (x2[1] - x1[1]) ** 2)
     # local element stiffness matrix
     kl = beam2d_stiffness_lcs(length, EA, EI)
@@ -248,65 +259,101 @@ def beam2d_postpro(x1: np.ndarray, x2: np.ndarray, u: np.ndarray, EA: float=0.0,
     return s
 
 
+def load_dat(file: str, type: type=float):
+    """
+    Function to load dat file as numpy array
+    """
+    logging.info(f'read {file} as {type.__name__}')
+    try:
+        m = np.loadtxt(file, ndmin=2, dtype=type)
+        return m
+    except Exception as e:
+        logging.exception(f'Failed reading {file}')
+
+
 def beam2d():
-    logging.debug(f'beam2d()')
+    logging.info('call beam2d()')
+    cfg = ConfigParser()
+    cfg.read(os.path.join(os.path.dirname(__file__), 'structures/console/g.ini'))
+
     # array of coordinates
-    xz = np.array([[0.0, 0.0],
-                   [3.0, 0.0],
-                   [6.0, 0.0]], dtype=float)
+    # xz = np.array([[0.0, 0.0],
+    #                [3.0, 0.0],
+    #                [6.0, 0.0]], dtype=float)
+    xz = load_dat(os.path.join(os.path.dirname(__file__), 'structures/console/xz.dat'), float)
+    logging.debug(f'xz:\n{xz}')
 
     # array of code numbers
-    lm = np.array([[1, 2, 3, 4, 5, 6],
-                   [4, 5, 6, 7, 8, 9]], dtype=int)
+    # lm = np.array([[1, 2, 3, 4, 5, 6],
+    #                [4, 5, 6, 7, 8, 9]], dtype=int)
+    lm = load_dat(os.path.join(os.path.dirname(__file__), 'structures/console/lm.dat'), int)
+    logging.debug(f'lm:\n{lm}')
 
     # number of elements
-    nelem = 2
+    nelem = lm.shape[0]
+    ndofs = lm.max()
+    ncdofs = int(cfg['DEFAULT']['constrained_dofs'])
+
+    # load vector
+    # f[7] = 1.0
+    f = load_dat(os.path.join(os.path.dirname(__file__), 'structures/console/f.dat'), float)
+    logging.debug(f'f:\n{f}')
 
     # property values
     EA = 1.0
     EI = 1.0
 
     # preparation of load vector, stiffness matrix, displacement vector
-    f = np.zeros((9, 1), dtype=float)
-    K = np.zeros((9, 9), dtype=float)
-    u = np.zeros((9, 1), dtype=float)
+    # f = np.zeros((9, 1), dtype=float)
+    K = np.zeros((ndofs, ndofs), dtype=float)
+    u = np.zeros((ndofs, 1), dtype=float)
 
     # creation of local stiffness matrix
-    ke1 = beam2d_stiffness(xz[0], xz[1], EA, EI)
-    logging.debug(f'ke1:\n{ke1}')
-    ke2 = beam2d_stiffness(xz[1], xz[2], EA, EI)
-    logging.debug(f'ke2:\n{ke2}')
-
-    # localisation
-    assemble(lm, K, ke1, 1)
-    assemble(lm, K, ke2, 2)
+    # ke1 = beam2d_stiffness(xz[0], xz[1], EA, EI)
+    # logging.debug(f'ke1:\n{ke1}')
+    # ke2 = beam2d_stiffness(xz[1], xz[2], EA, EI)
+    # logging.debug(f'ke2:\n{ke2}')
+    ke = []
+    for i in range(nelem):
+        ke.append(beam2d_stiffness(xz[i, :2], xz[i, 2:], EA, EI))
+        logging.debug(f'ke{i + 1}:\n{ke[i]}')
+        assemble(lm, K, ke[i], i + 1)
     logging.debug(f'K:\n{K}')
 
-    # load vector
-    f[7] = 1.0
-    logging.debug(f'f:\n{f}')
+    # localisation
+    # assemble(lm, K, ke1, 1)
+    # assemble(lm, K, ke2, 2)
+    # logging.debug(f'K:\n{K}')
 
     # solving the displacements
     # print(f'K[3:, 3:] shape {K[3:, 3:].shape}')
-    u[3:] = linalg.solve(K[3:, 3:], f[3:])
-    logging.debug(f'u:\n{u}')
+    u[ncdofs:] = linalg.solve(K[ncdofs:, ncdofs:], f[ncdofs:])
+    logging.info(f'u:\n{u}')
 
     # reactions
     # f[:3] = K[:3, 3:].dot(u[3:])
-    f[:3] = K[:3, 3:] @ u[3:]
-    logging.debug(f'f:\n{f}')
+    f[:ncdofs] = K[:ncdofs, ncdofs:] @ u[ncdofs:]
+    logging.info(f'f:\n{f}')
 
     # element displacements
-    u1 = u[lm[0, :] - 1]
-    logging.debug(f'u1:\n{u1}')
-    u2 = u[lm[1, :] - 1]
-    logging.debug(f'u2:\n{u2}')
+    # u1 = u[lm[0, :] - 1]
+    # logging.info(f'u1:\n{u1}')
+    # u2 = u[lm[1, :] - 1]
+    # logging.info(f'u2:\n{u2}')
+    ue = []
+    for i in range(nelem):
+        ue.append(u[lm[i, :] - 1])
+        logging.info(f'u{i + 1}: {ue[i]}')
 
     # element inner forces
-    s1 = beam2d_postpro(xz[0], xz[1], EA, EI, u1)
-    logging.debug(f's1:\n{s1}')
-    s2 = beam2d_postpro(xz[1], xz[2], EA, EI, u2)
-    logging.debug(f's2:\n{s2}')
+    # s1 = beam2d_postpro(xz[0], xz[1], u1, EA, EI)
+    # logging.info(f's1:\n{s1}')
+    # s2 = beam2d_postpro(xz[1], xz[2], u2, EA, EI)
+    # logging.info(f's2:\n{s2}')
+    se = []
+    for i in range(nelem):
+        se.append(beam2d_postpro(xz[i, :2], xz[i, 2:], ue[i], EA, EI))
+        logging.info(f'se{i + 1}:\n{se[i]}')
 
 
 if __name__ == '__main__':
