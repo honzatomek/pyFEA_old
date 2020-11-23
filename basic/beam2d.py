@@ -449,13 +449,12 @@ def beam2d(structure_directory: str = 'console'):
     u = np.zeros((ndofs, 1), dtype=float)
 
     # creation of local stiffness matrix and localisation
-    ke = []
+    # ke = []
     for i in range(nelem):
-        # ke.append(beam2d_stiffness(xz[i, :2], xz[i, 2:], EA, EI))
-        ke.append(beam2d_stiffness(nd[el[i][0] - 1], nd[el[i][1] - 1], EA, EI))
-        logging.debug(f'ke{i + 1}:\n{ke[i]}')
+        # ke.append(beam2d_stiffness(nd[el[i][0] - 1], nd[el[i][1] - 1], EA, EI))
+        # logging.debug(f'ke{i + 1}:\n{ke[i]}')
         # localisation
-        assemble(lme, K, ke[i], i + 1)
+        assemble(lme, K, beam2d_stiffness(nd[el[i][0] - 1], nd[el[i][1] - 1], EA, EI), i + 1)
     logging.debug(f'K:\n{K}')
     tmp = ['DOF']
     tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
