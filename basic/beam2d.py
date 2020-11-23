@@ -21,13 +21,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)6s *%(levelname).1s* %
 
 def beam2d_t(x1: np.ndarray, x2: np.ndarray):
     """
-    function computes transformation matrix (GCS -> LCS) of beam in 2d
+    Function computes transformation matrix (GCS -> LCS) of beam in 2d
     (Rl = T * Rg)
-    In:
-        x1 - coordinates of start of element [x1, z1]
-        x2 - coordinates of end of element [x1, z1]
-    Out:
-        t  - beam transformation matrix in 2D (6, 6)
+    :param x1: Coordinates of start of element [x1, z1]
+    :param x2: Coordinates of end of element [x1, z1]
+    :return:   t  - beam transformation matrix in 2D (6, 6)
     """
     logging.info(f'call beam2d_t()')
     logging.debug(f'call beam2d_t({x1}, {x2})')
@@ -46,20 +44,21 @@ def beam2d_t(x1: np.ndarray, x2: np.ndarray):
     return t
 
 
-def beam2d_stiffness_lcs(l: float = 0.0, EA: float = 0.0, EI: float = 0.0):
+def beam2d_stiffness_lcs(l: float = 0.0, A: float = 1.0, I: float = 1.0, E: float = 1.0):
     """
     Function to compute stiffness matrix of beam element in LCS (Kirchhoff, 2D)
-    In:
-        l  - length of element
-        EA - Youngs Modulus times section Area
-        EI - Youngs Modulus times Moment of Inertia
-    Out:
-        ke - element stiffness matrix in 2D (6, 6)
+    :param l: length of element
+    :param A: Section Area
+    :param I: Moment of Inertia
+    :param E: Youngs Modulus
+    :return:  ke = beam element stiffness matrix in LCS 2D (6, 6)
     """
     logging.info(f'call beam2d_stiffness_lcs()')
-    logging.debug(f'call beam2d_stiffness_lcs({l}, {EA}, {EI})')
+    logging.debug(f'call beam2d_stiffness_lcs({l}, {A}, {I}, {E})')
     l2 = l * l
     l3 = l2 * l
+    EA = E * A
+    EI = E * I
     ke = np.array([[EA / l, 0.0, 0.0, -EA / l, 0.0, 0.0],
                    [0.0, 12.0 * EI / l3, -6.0 * EI / l2, 0.0, -12.0 * EI / l3, -6.0 * EI / l2],
                    [0.0, -6.0 * EI / l2, 4.0 * EI / l, 0.0, 6.0 * EI / l2, 2.0 * EI / l],
@@ -71,20 +70,21 @@ def beam2d_stiffness_lcs(l: float = 0.0, EA: float = 0.0, EI: float = 0.0):
     return ke
 
 
-def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, EA: float = 0.0, EI: float = 0.0):
+def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, A: float = 1.0, I: float = 1.0, E: float = 1.0):
     """
     Function to compute stiffness matrix of beam element in GCS (Kirchhoff, 2D)
-    In:
-        x1 - coordinates of start of element [x1, z1]
-        x2 - coordinates of end of element [x1, z1]
-        EA - Youngs Modulus times section Area
-        EI - Youngs Modulus times Moment of Inertia
-    Out:
-        ke - element stiffness matrix in 2D (6, 6)
+    :param x1: Coordinates of start of element [x1, z1]
+    :param x2: Coordinates of end of element [x1, z1]
+    :param A:  Section Area
+    :param I:  Moment of Inertia
+    :param E:  Youngs Modulus
+    :return:   ke - beam element stiffness matrix in GCS 2D (6, 6)
     """
     logging.info(f'call beam2d_stiffness()')
-    logging.debug(f'call beam2d_stiffness({x1}, {x2}, {EA}, {EI})')
+    logging.debug(f'call beam2d_stiffness({x1}, {x2}, {A}, {I}, {E})')
     length = math.sqrt((x2[0] - x1[0]) ** 2 + (x2[1] - x1[1]) ** 2)
+    EA = E * A
+    EI = E * I
     # local element stiffness
     kl = beam2d_stiffness_lcs(length, EA, EI)
     # transformation matrix
@@ -96,22 +96,17 @@ def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, EA: float = 0.0, EI: float 
     return ke
 
 
-def beam2d_load(x1: np.ndarray, x2: np.ndarray, fx: float = 0.0, fz: float = 0.0, my: float = 0.0):
+def beam2d_load(x1: np.ndarray, x2: np.ndarray, fx: float = 0.0, fz: float = 0.0):
     """
     Function computes element load vector from distributed elemental load (2D)
-    In:
-        x1 - coordinates of start of element [x1, z1]
-        x2 - coordinates of end of element [x1, z1]
-        fx - element axial distributed load (positive = x1 -> x2)
-        fz - element transversal distributed load (positive = if x1 -> x2 = left to right
-             then fz+ = bottom to top)
-        my - element distributed moment load (positive = if x1 -> x2 = left to right then
-             my+ = counter clockwise), not yet implemented
-    Out:
-        f  - element load vector in 2D
+    :param x1: Coordinates of start of element [x1, z1]
+    :param x2: Coordinates of end of element [x1, z1]
+    :param fx: Element axial distributed load (positive = x1 -> x2)
+    :param fz: Element transversal distributed load (positive = if x1 -> x2 = left to right
+    :return:   fe - element load vector in GCS 2D (6, 1)
     """
     logging.info(f'call beam2d_load()')
-    logging.debug(f'call beam2d_load({x1}, {x2}, {fx}, {fz}, {my})')
+    logging.debug(f'call beam2d_load({x1}, {x2}, {fx}, {fz})')
     length = math.sqrt((x2[0] - x1[0]) ** 2 + (x2[1] - x1[1]) ** 2)
     # load vector in LCS
     fl = np.array([fx * length / 2.0,
@@ -123,27 +118,28 @@ def beam2d_load(x1: np.ndarray, x2: np.ndarray, fx: float = 0.0, fz: float = 0.0
                   dtype=float)
     # transformation matrix
     t = beam2d_t(x1, x2)
+    # load vector in GCS
+    fe = t.T @ fl
 
-    f = t.T @ fl
-
-    return f
+    return fe
 
 
-def beam2d_temp(x1: np.ndarray, x2: np.ndarray, EA: float = 0.0, a: float = 0.0, t: float = 0.0, t0: float = 0.0):
+def beam2d_temp(x1: np.ndarray, x2: np.ndarray, A: float = 1.0, E: float = 1.0, a: float = 1.0, t: float = 0.0, t0: float = 0.0):
     """
     Function computes the load vector from uniform thermal load on beam in 2D
-    In:
-        x1 - coordinates of start of element [x1, z1]
-        x2 - coordinates of end of element [x1, z1]
-        EA - Youngs Modulus times section Area
-        a  - Longitudiinal thermal expansion coefficient
-        t  - uniform thermal load on beam element
-        t0 - base temperature value
-    Out:
-        f  - load vector from uniform thermal load on beam in 2D GCS
+    :param x1: Coordinates of start of element [x1, z1]
+    :param x2: Coordinates of end of element [x1, z1]
+    :param A:  Section Area
+    :param E:  Youngs Modulus
+    :param a:  Longitudinal Thermal expansion coefficient
+    :param t:  Uniform thermal load on beam element
+    :param t0: Base Temperature
+    :return:   fe - load vector from uniform thermal load on beam in 2D GCS (6, 1)
     """
     logging.info(f'call beam2d_temp()')
-    logging.debug(f'beam2d_temp({EA}, {a}, {t}, {t0})')
+    logging.debug(f'beam2d_temp({A}, {E}, {a}, {t}, {t0})')
+    EA = E * A
+    # load vector in LCS
     fl = np.array([-EA * a * (t - t0),
                    0.0,
                    0.0,
@@ -153,23 +149,21 @@ def beam2d_temp(x1: np.ndarray, x2: np.ndarray, EA: float = 0.0, a: float = 0.0,
                   dtype=float)
     # transformation matrix
     t = beam2d_t(x1, x2)
+    # load vector in GCS
+    # fe = t.T.dot(fl)
+    fe = t.T @ fl
 
-    # f = t.T.dot(fl)
-    f = t.T @ fl
-
-    return f
+    return fe
 
 
 def beam2d_initialstress(x1: np.ndarray, x2: np.ndarray, N: float = 0.0):
     """
     Function computes the matrix of beam initial stresses for use in stability
     (Kirchhoff, 2D)
-    In:
-        x1 - coordinates of start of element [x1, z1]
-        x2 - coordinates of end of element [x1, z1]
-        N  - axial force in element
-    Out:
-        ks - matrix of element initial stresses in GCS (6, 6)
+    :param x1: Coordinates of start of element [x1, z1]
+    :param x2: Coordinates of end of element [x1, z1]
+    :param N:  Axial force in element
+    :return:   ks - matrix of element initial stresses in GCS (6, 6)
     """
     logging.info(f'call beam2d_initialstress()')
     logging.debug(f'call beam2d_initialstress({x1}, {x2}, {N})')
@@ -199,15 +193,12 @@ def beam2d_initialstress(x1: np.ndarray, x2: np.ndarray, N: float = 0.0):
 
 def assemble(lm: np.ndarray, K: np.ndarray, ke: np.ndarray, eID: int):
     """
-    Function for localisation of element stiffness matrix into
-    global stiffness matrix
-    In:
-        lm  - array of code numbers
-        K   - global stiffness matrix
-        ke  - element stiffness matrix
-        eID - element ID (1 based)
-    Out:
-        K   - global stiffness matrix
+    Function for localisation of element stiffness matrix into global stiffness matrix
+    :param lm:  Array of code numbers
+    :param K:   Global stiffness matrix
+    :param ke:  Element stiffness matrix
+    :param eID: Element ID (1 based)
+    :return:    K - Global stiffness matrix
     """
     logging.info(f'call assemble() element {eID}')
     logging.debug(f'call assemble({lm}, {K}, {ke}, {eID})')
@@ -225,9 +216,9 @@ def assemble(lm: np.ndarray, K: np.ndarray, ke: np.ndarray, eID: int):
 def assemble_load_nodal(lmn: np.ndarray, fn: np.ndarray):
     """
     Function to assemble nodal loads into global right side vector
-    :param lmn:  node DOF localisation matrix
-    :param fn:   array of nodal loads [lpatID, ndID, Fx, Fz, My]
-    :return:
+    :param lmn:  Node DOF localisation matrix
+    :param fn:   Array of nodal loads [lpatID, ndID, Fx, Fz, My]
+    :return:     f - right side vector of nodal loads
     """
     f = np.zeros((lmn.max(), 1), dtype=float)
     for fi in fn:
@@ -242,13 +233,11 @@ def assemble_load_nodal(lmn: np.ndarray, fn: np.ndarray):
 def assemble_load_elemental(lme: np.ndarray, f: np.ndarray, fe: np.ndarray, eID: int):
     """
     Function to assemble global load vector in GCS
-    In:
-        lme - array of code numbers
-        f   - global load vector
-        fe  - element load vector
-        eID - element ID (1 based)
-    Out:
-        f   - global load vector
+    :param lme: Array of code numbers
+    :param f:   Global load vector (edited by function)
+    :param fe:  Element load vector
+    :param eID: Element ID (1 based)
+    :return: None
     """
     logging.info(f'call assemble_load() element {eID}')
     logging.debug(f'call assemble_load({lme}, {f}, {fe}, {eID})')
@@ -259,21 +248,22 @@ def assemble_load_elemental(lme: np.ndarray, f: np.ndarray, fe: np.ndarray, eID:
             f[ia - 1][0] += fe[i][0]
 
 
-def beam2d_postpro(x1: np.ndarray, x2: np.ndarray, u: np.ndarray, EA: float = 0.0, EI: float = 0.0):
+def beam2d_postpro(x1: np.ndarray, x2: np.ndarray, u: np.ndarray, A: float = 1.0, I: float = 1.0, E: float = 1.0):
     """
     Function to get element inner forces in LCS (2D)
-    In:
-        x1 - coordinates of start of element [x1, z1]
-        x2 - coordinates of end of element [x1, z1]
-        u  - vector of beam end displacements in GCS (2D)
-        EA - Youngs Modulus times section Area
-        EI - Youngs Modulus times Moment of Inertia
-    Out:
-        s  - vector of beam inner forces in LCS (2D)
+    :param x1: coordinates of start of element [x1, z1]
+    :param x2: coordinates of end of element [x1, z1]
+    :param u:  vector of beam end displacements in GCS (2D)
+    :param A:  Section Area
+    :param I:  Moment of Inertia
+    :param E:  Youngs Modulus
+    :return:   s - vector of beam inner forces in LCS (2D)
     """
     logging.info(f'call beam2d_postpro()')
-    logging.debug(f'call beam2d_postpro({x1}, {x2}, {u}, {EA}, {EI})')
+    logging.debug(f'call beam2d_postpro({x1}, {x2}, {u}, {A}, {I}, {E})')
     length = math.sqrt((x2[0] - x1[0]) ** 2 + (x2[1] - x1[1]) ** 2)
+    EA = E * A
+    EI = E * I
     # local element stiffness matrix
     kl = beam2d_stiffness_lcs(length, EA, EI)
     # transformation matrix
@@ -286,40 +276,61 @@ def beam2d_postpro(x1: np.ndarray, x2: np.ndarray, u: np.ndarray, EA: float = 0.
 
 
 def localisation_matrix(nd: np.ndarray, el: np.ndarray, cs: np.ndarray):
+    """
+    Function to create nodal and elemental localisation matrix
+    :param nd: Array of nodes
+    :param el: Array of elements
+    :param cs: Array of constraints
+    :return:   ndofs  - number of DOFs total
+               ncdofs - number of DOFs constrained
+               lmn    - node to DOF localisation matrix
+               lme    - elemental localisation matrix
+               lmd    - DOF to node localisation matrix
+    """
     logging.info(f'call localisation_matrix()')
     logging.debug(f'call localisation_matrix({nd}, {el}, {cs})')
     ndofs = 0
-    ncdofs = 0
     lmn = np.zeros((nd.shape[0], 3), dtype=int)
-    lme = np.zeros((el.shape[0], el.shape[1] * 3), dtype=int)
+    lme = np.zeros((el.shape[0], 6), dtype=int)
+    lmd = []
 
     # process constrained DOFs first
     for c in cs:
+        nID = c[0]
         for i, dof in enumerate(c[1:]):
             if dof == 1:
                 ndofs += 1
-                lmn[c[0] - 1][i] = ndofs
+                lmn[nID - 1][i] = ndofs
+                lmd.append([nID, i + 1])
     ncdofs = ndofs
 
     # then process elements
     for i in range(el.shape[0]):
-        for j in range(el.shape[1]):
-            for k in range(lmn.shape[1]):
-                if lmn[el[i][j] - 1][k] == 0:
+        for j in range(2):
+            for k in range(3):
+                if lmn[el[i][j + 2] - 1][k] == 0:
                     ndofs += 1
-                    lmn[el[i][j] - 1][k] = ndofs
+                    lmn[el[i][j + 2] - 1][k] = ndofs
                     lme[i][j * 3 + k] = ndofs
+                    lmd.append([el[i][j + 2], k + 1])
                 else:
-                    lme[i][j * 3 + k] = lmn[el[i][j] - 1][k]
+                    lme[i][j * 3 + k] = lmn[el[i][j + 2] - 1][k]
 
-    return ndofs, ncdofs, lmn, lme
+    lmd = np.array(lmd, dtype=int)
+
+    return ndofs, ncdofs, lmn, lme, lmd
 
 
 def logging_array(title: str, arr: np.ndarray, header_list: list, dtype: list = None, short: bool = False):
     """
-    Function to print numpy ndarray to logger, int is printed as %8n, float as %16.5f
-    In:
-        arr - numpy ndarray to be printed
+    Function to print numpy ndarray to logger, int is printed as %8n, float as %16.5f, row number is printed
+    also, 1 based
+    :param title:       Data Title to be printed
+    :param arr:         2D Data Array
+    :param header_list: List of Column Names
+    :param dtype:       List of column types for print (str/int/float)
+    :param short:       True/False, if True, floats are printed in engineering format %10.3e, False %16.5f
+    :return: None
     """
     fmth = []
     fmtv = []
@@ -369,9 +380,10 @@ def logging_array(title: str, arr: np.ndarray, header_list: list, dtype: list = 
 def logging_table(title: str, arr: list, fmt: str = '8n'):
     """
     Function to print 2D array of 2 columns to logger
-    In:
-        arr - 2D list to print [name, value]
-        fmt - format of value, default = 8n
+    :param title: Data Title to be printed
+    :param arr:   2-column array of data to be printed
+    :param fmt:   Python print format specifier (usually in curly brackets) for 2nd column, {0:8n} -> 8n
+    :return:      None
     """
     fmtv = '  {0:16s} = {1:' + fmt + '}'
     message = ['']
@@ -387,6 +399,9 @@ def logging_table(title: str, arr: list, fmt: str = '8n'):
 def load_dat(file: str, dtype: type = float):
     """
     Function to load dat file as numpy array
+    :param file:  Filename to read
+    :param dtype: Data type of returned numpy array
+    :return:      Numpy Array of read Data
     """
     logging.info(f'read {file} as {dtype.__name__}')
     try:
@@ -412,7 +427,17 @@ def beam2d(structure_directory: str = 'console'):
     el = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/el.dat'), dtype=int)
     nelem = el.shape[0]
     logging.debug(f'el:\n{el}')
-    logging_array('Element Connectivity', el, ['eID', 'nd1', 'nd2'])
+    logging_array('Element Connectivity', el, ['eID', 'mID', 'pID', 'nd1', 'nd2'])
+
+    # array of materials
+    mt = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/mt.dat'), dtype=float)
+    logging.debug(f'mt:\n{mt}')
+    logging_array('Materials', mt, ['mID', 'g', 'E', 'nu', 'alpha'])
+
+    # array of properties
+    pt = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/pt.dat'), dtype=float)
+    logging.debug(f'pt:\n{pt}')
+    logging_array('Properties', mt, ['pID', 'A', 'I', 'W', 'Ash'])
 
     # array of suppressed nodes
     cs = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/cs.dat'), dtype=int)
@@ -424,9 +449,11 @@ def beam2d(structure_directory: str = 'console'):
                   dtype=['int', 'int', 'int', 'float', 'float', 'float'])
 
     # DOF localisation matrices
-    ndofs, ncdofs, lmn, lme = localisation_matrix(nd, el, cs)
+    ndofs, ncdofs, lmn, lme, lmd = localisation_matrix(nd, el, cs)
     logging.debug(f'lmn:\n{lmn}')
     logging_array('Node DOF numbers', lmn, ['nID', 'dofX', 'dofZ', 'dofFi'])
+    logging.debug(f'lmd:\n{lmd}')
+    logging_array('DOF numbers to Node', lmd, ['dofID', 'nID', 'dir'])
     logging.debug(f'lme:\n{lme}')
     logging_array('Element DOF numbers', lme, ['eID', 'dofX1', 'dofZ1', 'dofFi1', 'dofX2', 'dofZ2', 'dofFi2'])
 
@@ -434,15 +461,13 @@ def beam2d(structure_directory: str = 'console'):
     logging_table('Model info', [['nodes', nnode], ['elements', nelem], ['dofs', ndofs], ['dofs constrained', ncdofs]])
 
     # load vector
-    # f = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/f.dat'), dtype=float)
     f = assemble_load_nodal(lmn, fn)
-    # f = np.zeros((ndofs, 1), dtype=float)
     logging.debug(f'f:\n{f}')
     logging_array('Right side vector', f, ['dofID', 'F'])
 
     # property values
-    EA = 1.0
-    EI = 1.0
+    # EA = 1.0
+    # EI = 1.0
 
     # preparation of load vector, stiffness matrix, displacement vector
     K = np.zeros((ndofs, ndofs), dtype=float)
@@ -450,7 +475,9 @@ def beam2d(structure_directory: str = 'console'):
 
     # creation of local stiffness matrix and localisation
     for i in range(nelem):
-        assemble(lme, K, beam2d_stiffness(nd[el[i][0] - 1], nd[el[i][1] - 1], EA, EI), i + 1)
+        assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
+                                          pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+                                          mt[el[i][0] - 1][1]), i + 1)
     logging.debug(f'K:\n{K}')
     tmp = ['DOF']
     tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
@@ -489,7 +516,9 @@ def beam2d(structure_directory: str = 'console'):
     # element inner forces
     se = np.zeros((nelem, 6))
     for i in range(nelem):
-        se[i] = beam2d_postpro(nd[el[i][0] - 1], nd[el[i][1] - 1], ue[i], EA, EI)
+        se[i] = beam2d_postpro(nd[el[i][2] - 1], nd[el[i][3] - 1], ue[i],
+                               pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+                               mt[el[i][0] - 1][1])
     logging.debug(f'se:\n{se}')
     logging_array('Element Inner Forces', se, ['eID', 'N1', 'Q1', 'M1', 'N2', 'Q2', 'M2'])
 
