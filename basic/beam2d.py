@@ -449,11 +449,7 @@ def beam2d(structure_directory: str = 'console'):
     u = np.zeros((ndofs, 1), dtype=float)
 
     # creation of local stiffness matrix and localisation
-    # ke = []
     for i in range(nelem):
-        # ke.append(beam2d_stiffness(nd[el[i][0] - 1], nd[el[i][1] - 1], EA, EI))
-        # logging.debug(f'ke{i + 1}:\n{ke[i]}')
-        # localisation
         assemble(lme, K, beam2d_stiffness(nd[el[i][0] - 1], nd[el[i][1] - 1], EA, EI), i + 1)
     logging.debug(f'K:\n{K}')
     tmp = ['DOF']
@@ -463,25 +459,39 @@ def beam2d(structure_directory: str = 'console'):
 
     # solving the displacements
     u[ncdofs:] = linalg.solve(K[ncdofs:, ncdofs:], f[ncdofs:])
-    # logging.info(f'u:\n{u}')
+    logging.debug(f'u:\n{u}')
     logging_array('Resulting displacements', u, ['dofID', 'du'])
+
+    ndu = u[lmn - 1].reshape((-1, 3))
+    logging.debug(f'ndu:\n{ndu}')
+    logging_array('Nodal displacements', ndu, ['nID', 'dX', 'dZ', 'dFi'])
 
     # reactions
     f[:ncdofs] = K[:ncdofs, ncdofs:] @ u[ncdofs:]
-    logging.info(f'f:\n{f}')
+    logging.debug(f'f:\n{f}')
     logging_array('Resulting reactions', f[:ncdofs], ['dofID', 'R'])
+    r = np.zeros((cs.shape[0], lmn.shape[1] + 1))
+    for i in range(cs.shape[0]):
+        r[i][0] = cs[i][0]
+        for j in range(cs[i][1:].shape[0]):
+            if cs[i][j + 1] == 1:
+                r[i][j + 1] = f[lmn[cs[i][0] - 1][j] - 1]
+            else:
+                r[i][j + 1] = np.NaN
+    logging.debug(f'r:\n{r}')
+    logging_array('Nodal reactions', r, ['cID', 'nID', 'Fx', 'Fz', 'My'])
 
     # element displacements
-    ue = []
-    for i in range(nelem):
-        ue.append(u[lme[i, :] - 1])
-        logging.info(f'u{i + 1}:\n{ue[i]}')
+    ue = u[lme - 1].reshape((nelem, lme.shape[1]))
+    logging.debug(f'ue:\n{ue}')
+    logging_array('Elemental displacements', ue, ['eID', 'dX1', 'dZ1', 'dFi1', 'dX2', 'dZ2', 'dFi2'])
 
     # element inner forces
-    se = []
+    se = np.zeros((nelem, 6))
     for i in range(nelem):
-        se.append(beam2d_postpro(nd[el[i][0] - 1], nd[el[i][1] - 1], ue[i], EA, EI))
-        logging.info(f'se{i + 1}:\n{se[i]}')
+        se[i] = beam2d_postpro(nd[el[i][0] - 1], nd[el[i][1] - 1], ue[i], EA, EI)
+    logging.debug(f'se:\n{se}')
+    logging_array('Element Inner Forces', se, ['eID', 'N1', 'Q1', 'M1', 'N2', 'Q2', 'M2'])
 
 
 if __name__ == '__main__':
