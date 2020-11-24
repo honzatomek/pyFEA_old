@@ -222,8 +222,8 @@ def assemble_load_nodal(lmn: np.ndarray, fn: np.ndarray):
     """
     f = np.zeros((lmn.max(), 1), dtype=float)
     for fi in fn:
-        lpat = int(f[0])
-        ndID = int(f[1])
+        lpat = int(fi[0])
+        ndID = int(fi[1])
         for i in range(lmn[ndID - 1].shape[0]):
             f[lmn[ndID - 1][i] - 1] = fi[i + 2]
 
@@ -241,11 +241,11 @@ def assemble_load_elemental(lme: np.ndarray, f: np.ndarray, fe: np.ndarray, eID:
     """
     logging.info(f'call assemble_load() element {eID}')
     logging.debug(f'call assemble_load({lme}, {f}, {fe}, {eID})')
-    ndof = f.shape[0]
+    ndof = fe.shape[0]
     for i in range(ndof):
         ia = lme[eID - 1][i]
         if ia != 0:
-            f[ia - 1][0] += fe[i][0]
+            f[ia - 1] += fe[i]
 
 
 def beam2d_postpro(x1: np.ndarray, x2: np.ndarray, u: np.ndarray, A: float = 1.0, I: float = 1.0, E: float = 1.0):
@@ -403,7 +403,7 @@ def load_dat(file: str, dtype: type = float):
     :param dtype: Data type of returned numpy array
     :return:      Numpy Array of read Data
     """
-    logging.info(f'read {file} as {dtype.__name__}')
+    logging.info(f'read {file}')
     try:
         m = np.loadtxt(file, ndmin=2, dtype=dtype, comments=('#'))
         return m
@@ -412,7 +412,7 @@ def load_dat(file: str, dtype: type = float):
 
 
 def beam2d(structure_directory: str = 'console'):
-    logging.info('call beam2d()')
+    logging.info(f'call beam2d({structure_directory})')
     cfg = ConfigParser()
     cfg.read(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/g.ini'))
     solver = cfg['DEFAULT']['solver']
@@ -448,6 +448,11 @@ def beam2d(structure_directory: str = 'console'):
     logging_array('Nodal loads', fn, ['ldID', 'lpatID', 'nID', 'Fx', 'Fz', 'My'],
                   dtype=['int', 'int', 'int', 'float', 'float', 'float'])
 
+    # array of elemental loads
+    fe = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/fe.dat'))
+    logging_array('Elemental loads', fe, ['ldID', 'lpatID', 'eID', 'fx', 'fz', 'dt'],
+                  dtype=['int', 'int', 'int', 'float', 'float', 'float'])
+
     # DOF localisation matrices
     ndofs, ncdofs, lmn, lme, lmd = localisation_matrix(nd, el, cs)
     logging.debug(f'lmn:\n{lmn}')
@@ -462,6 +467,14 @@ def beam2d(structure_directory: str = 'console'):
 
     # load vector
     f = assemble_load_nodal(lmn, fn)
+    for i in range(fe.shape[0]):
+        eID = int(fe[i][1])
+        assemble_load_elemental(lme, f, beam2d_load(nd[el[eID - 1][2] - 1],
+                                                    nd[el[eID - 1][3] - 1],
+                                                    fe[i][2], fe[i][3]), eID)
+        assemble_load_elemental(lme, f, beam2d_temp(nd[el[eID - 1][2] - 1], nd[el[eID - 1][3] - 1],
+                                                    pt[el[eID - 1][1] - 1][0], mt[el[eID - 1][0] - 1][1],
+                                                    mt[el[eID - 1][0] - 1][2], fe[i][4]), eID)
     logging.debug(f'f:\n{f}')
     logging_array('Right side vector', f, ['dofID', 'F'])
 
