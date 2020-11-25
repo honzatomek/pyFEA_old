@@ -96,6 +96,82 @@ def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, A: float = 1.0, I: float = 
     return ke
 
 
+def beam2d_mass_lumped(L: float = 1.0, A: float = 1.0, ro: float = 1.0, nsm: float = 0.0):
+    """
+    Function to compute lumped mass matrix of beam element in LCS (2D)
+    :param L:   Element Length
+    :param A:   Section Area
+    :param ro:  Element Material Density
+    :param nsm: Nonstructural Mass per unit length
+    :return:    mle - beam element lumped mass matrix in LCS 2D (6, 6)
+    """
+    logging.info(f'call beam2d_mass_lumped()')
+    logging.debug(f'call beam2d_mass_lumped({L}, {A}, {ro}, {nsm})')
+    # structural mass
+    sm = A * L * ro
+    # nonstructural mass
+    nm = L * nsm
+    # local lumped element mass matrix
+    mle = np.eye(6, dtype=float) * (sm + nm) / 2
+    mle[2][2] = 0.0
+    mle[5][5] = 0.0
+
+    return mle
+
+
+def beam2d_mass_consistent(L: float = 1.0, A: float = 1.0, ro: float = 1.0, nsm: float = 0.0):
+    """
+    Function to compute consistent mass matrix of beam element in LCS (2D)
+    :param L:   Element Length
+    :param A:   Section Area
+    :param ro:  Element Material Density
+    :param nsm: Nonstructural Mass per unit length
+    :return:    mce - beam element consistent mass matrix in LCS 2D (6, 6)
+    """
+    logging.info(f'call beam2d_mass_consistent()')
+    logging.debug(f'call beam2d_mass_consistent({L}, {A}, {ro}, {nsm})')
+    # structural mass
+    sm = A * L * ro
+    # nonstructural mass
+    nm = L * nsm
+    # local lumped element mass matrix
+    mce = np.zeros((6, 6), dtype=float)
+    mce = np.array([[140.0, 0.0, 0.0, 70.0, 0.0, 0.0],
+                    [0.0, 156.0, 22.0 * L, 0.0, 54.0, -13.0 * L],
+                    [0.0, 2.0 * L, 4.0 * (L ** 2.0), 0.0, 13.0 * L, -3.0 * (L ** 2.0)],
+                    [70.0, 0.0, 0.0, 140.0, 0.0, 0.0],
+                    [0.0, 54.0, 13.0 * L, 0.0, 156.0, -22 * L],
+                    [0.0, -13.0 * L, -3.0 * (L ** 2), 0.0, -22.0 * L, 4.0 * (L ** 2.0)]], dtype=float)
+    mce *= (sm + nm) / 420.0
+
+    return mce
+
+
+def beam2d_mass(x1: np.ndarray, x2: np.ndarray, A: float = 1.0, ro: float = 1.0, nsm: float = 0.0, mi: float = 0.5):
+    """
+    Function to compute mass matrix of beam element in GCS (2D)
+    :param x1:  Coordinates of start of element [x1, z1]
+    :param x2:  Coordinates of end of element [x1, z1]
+    :param A:   Section Area
+    :param ro:  Element Material Density
+    :param nsm: Nonstructural Mass
+    :param mi:  Consistent to Lumped Mass Matrix ratio M = (1 - mi) * Mc + mi * Ml
+    :return:    me - beam element mass matrix in GCS 2D (6, 6)
+    """
+    logging.info(f'call beam2d_mass()')
+    logging.debug(f'call beam2d_mass({x1}, {x2}, {A}, {ro}, {nsm})')
+    length = math.sqrt((x2[0] - x1[0]) ** 2 + (x2[1] - x1[1]) ** 2)
+    # get mass in LCS
+    ml = (1.0 - mi) * beam2d_mass_consistent(length, A, ro, nsm) + mi * beam2d_mass_lumped(length, A, ro, nsm)
+    # transformation matrix
+    t = beam2d_t(x1, x2)
+
+    # transformation LCS -> GCS
+    me = t.T @ ml @ t
+
+    return me
+
+
 def beam2d_load(x1: np.ndarray, x2: np.ndarray, fx: float = 0.0, fz: float = 0.0):
     """
     Function computes element load vector from distributed elemental load (2D)
