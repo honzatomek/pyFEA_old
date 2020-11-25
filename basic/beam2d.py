@@ -213,21 +213,19 @@ def assemble(lm: np.ndarray, K: np.ndarray, ke: np.ndarray, eID: int):
     # K[lm[eID - 1] - 1, :][:, lm[eID - 1] - 1] += ke
 
 
-def assemble_load_nodal(lmn: np.ndarray, fn: np.ndarray):
+def assemble_load_nodal(f: np.ndarray, lmn: np.ndarray, fn: np.ndarray):
     """
     Function to assemble nodal loads into global right side vector
+    :param f:    Global load vector
     :param lmn:  Node DOF localisation matrix
     :param fn:   Array of nodal loads [lpatID, ndID, Fx, Fz, My]
     :return:     f - right side vector of nodal loads
     """
-    f = np.zeros((lmn.max(), 1), dtype=float)
     for fi in fn:
         lpat = int(fi[0])
         ndID = int(fi[1])
         for i in range(lmn[ndID - 1].shape[0]):
             f[lmn[ndID - 1][i] - 1] = fi[i + 2]
-
-    return f
 
 
 def assemble_load_elemental(lme: np.ndarray, f: np.ndarray, fe: np.ndarray, eID: int):
@@ -311,6 +309,11 @@ def localisation_matrix(nd: np.ndarray, el: np.ndarray, cs: np.ndarray):
                 if lmn[el[i][j + 2] - 1][k] == 0:
                     ndofs += 1
                     lmn[el[i][j + 2] - 1][k] = ndofs
+                    lme[i][j * 3 + k] = ndofs
+                    lmd.append([el[i][j + 2], k + 1])
+                # process element releases (add DOF)
+                elif el[i][4 + j * 3 + k] == 1:
+                    ndofs += 1
                     lme[i][j * 3 + k] = ndofs
                     lmd.append([el[i][j + 2], k + 1])
                 else:
@@ -446,7 +449,8 @@ def beam2d(structure_directory: str = 'console'):
     el = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/el.dat'), dtype=int)
     nelem = el.shape[0]
     logging.debug(f'el:\n{el}')
-    logging_array('Element Connectivity', el, ['eID', 'mID', 'pID', 'nd1', 'nd2'])
+    logging_array('Element Connectivity', el,
+                  ['eID', 'mID', 'pID', 'nd1', 'nd2', 'Rx1', 'Rz1', 'Rfi1', 'Rx2', 'Rz2', 'Rfi2'])
 
     # array of materials
     mt = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/mt.dat'), dtype=float)
@@ -485,7 +489,8 @@ def beam2d(structure_directory: str = 'console'):
     logging_table('Model info', [['nodes', nnode], ['elements', nelem], ['dofs', ndofs], ['dofs constrained', ncdofs]])
 
     # load vector
-    f = assemble_load_nodal(lmn, fn)
+    f = np.zeros((ndofs, 1))
+    assemble_load_nodal(f, lmn, fn)
     for i in range(fe.shape[0]):
         eID = int(fe[i][1])
         assemble_load_elemental(lme, f, beam2d_load(nd[el[eID - 1][2] - 1],

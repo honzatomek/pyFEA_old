@@ -1,3 +1,3 @@
-#mID pID nd1  nd2
-1    1    1    2
-1    1    2    3
+#mID pID nd1  nd2  Rx1   Rz1  Rfi1   Rx2   Rz2  Rfi2
+1    1    1    2     0     0     0     0     0     0
+1    1    2    3     0     0     0     0     0     0
