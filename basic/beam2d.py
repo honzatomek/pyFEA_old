@@ -321,49 +321,66 @@ def localisation_matrix(nd: np.ndarray, el: np.ndarray, cs: np.ndarray):
     return ndofs, ncdofs, lmn, lme, lmd
 
 
-def logging_array(title: str, arr: np.ndarray, header_list: list, dtype: list = None, short: bool = False):
+def format_norm(value, format_spec):
+    return format_spec.format(value)
+
+
+def format_eng(value, format_spec: str = ' {0:9.3f}E{1:+03n}'):
+    if value == 0.0:
+        return format_spec.format(0.0, 0)
+    exponent = int(math.log10(abs(value)))
+    exponent = exponent - exponent % 3
+    mantissa = value / (10 ** exponent)
+    return format_spec.format(mantissa, exponent)
+
+
+def logging_array(title: str, arr: np.ndarray, header_list: list, dtype: list = None, eng: bool = False):
     """
     Function to print numpy ndarray to logger, int is printed as %8n, float as %16.5f, row number is printed
-    also, 1 based
+    also, 1 based.
     :param title:       Data Title to be printed
     :param arr:         2D Data Array
     :param header_list: List of Column Names
-    :param dtype:       List of column types for print (str/int/float)
-    :param short:       True/False, if True, floats are printed in engineering format %10.3e, False %16.5f
+    :param dtype:       List of column types for print (str/int/float/eng) eng is  for engineering format 1.0E+03
+    :param eng:         True/False, if True, floats are printed in engineering format %8.3fE%+03d, False %16.5f
     :return: None
     """
     fmth = []
     fmtv = []
     if dtype is None:
         fmth.append('  {0:^8s}')
-        fmtv.append('  {0:8n}')
+        fmtv.append([format_norm, '  {0:8n}'])
         for i, val in enumerate(arr[0]):
             if 'int' in type(val).__name__:
                 fmth.append(' {0:^8s}')
-                fmtv.append(' {0:8n}')
+                fmtv.append([format_norm, ' {0:8n}'])
             elif 'float' in type(val).__name__:
-                if short:
-                    fmth.append(' {0:^10s}')
-                    fmtv.append(' {0:10.3e}')
+                if eng:
+                    fmth.append(' {0:^12s}')
+                    fmtv.append([format_eng, ' {0:8.3f}E{1:+03n}'])
                 else:
                     fmth.append(' {0:^16s}')
-                    fmtv.append(' {0:16.5f}')
+                    fmtv.append([format_norm, ' {0:16.5f}'])
             else:
                 fmth.append(' {0:^16s}')
-                fmtv.append(' {0:16s}')
+                fmtv.append([format_norm, ' {0:16s}'])
     else:
         for dt in dtype:
             if dt == 'int':
                 fmth.append(' {0:^8s}')
-                fmtv.append(' {0:8n}')
+                fmtv.append([format_norm, ' {0:8n}'])
             elif dt == 'float':
-                fmth.append(' {0:^16s}')
-                fmtv.append(' {0:16.5f}')
+                if eng:
+                    fmth.append(' {0:^12s}')
+                    fmtv.append([format_eng, ' {0:8.3f}E{1:+03n}'])
+                else:
+                    fmth.append(' {0:^10s}')
+                    fmtv.append([format_norm, ' {0:10.1f}'])
             else:
                 fmth.append(' {0:^16s}')
-                fmtv.append(' {0:16s}')
+                fmtv.append([format_norm, ' {0:16s}'])
             fmth[0] = ' ' + fmth[0]
-            fmtv[0] = ' ' + fmtv[0]
+            fmtv[0][1] = ' ' + fmtv[0][1]
 
     header = '\n' + ''.join([fmth[i].format(header_list[i]) for i in range(len(header_list))])
     delimit = '\n ' + (len(header) - 1) * '-'
@@ -372,7 +389,9 @@ def logging_array(title: str, arr: np.ndarray, header_list: list, dtype: list = 
     message += header.rstrip(' ')
     message += delimit
     for i in range(arr.shape[0]):
-        message += '\n' + fmtv[0].format(i + 1) + ''.join([fmtv[j + 1].format(arr[i][j]) for j in range(arr.shape[1])])
+        # message += '\n' + fmtv[0].format(i + 1) + ''.join([fmtv[j + 1].format(arr[i][j]) for j in range(arr.shape[1])])
+        message += '\n' + fmtv[0][0](i + 1, fmtv[0][1]) \
+                   + ''.join([fmtv[j + 1][0](arr[i][j], fmtv[j + 1][1]) for j in range(arr.shape[1])])
     message += delimit
     logging.info(f' >>> {title}:\n{message}\n')
 
@@ -494,7 +513,7 @@ def beam2d(structure_directory: str = 'console'):
     logging.debug(f'K:\n{K}')
     tmp = ['DOF']
     tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
-    logging_array('Stiffness Matrix', K, tmp, short=True)
+    logging_array('Stiffness Matrix', K, tmp, eng=True)
     del tmp
 
     # solving the displacements
@@ -524,7 +543,7 @@ def beam2d(structure_directory: str = 'console'):
     # element displacements
     ue = u[lme - 1].reshape((nelem, lme.shape[1]))
     logging.debug(f'ue:\n{ue}')
-    logging_array('Elemental displacements', ue, ['eID', 'dX1', 'dZ1', 'dFi1', 'dX2', 'dZ2', 'dFi2'])
+    logging_array('Elemental displacements', ue, ['eID', 'dX1', 'dZ1', 'dFi1', 'dX2', 'dZ2', 'dFi2'], eng=True)
 
     # element inner forces
     se = np.zeros((nelem, 6))
@@ -533,7 +552,7 @@ def beam2d(structure_directory: str = 'console'):
                                pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
                                mt[el[i][0] - 1][1])
     logging.debug(f'se:\n{se}')
-    logging_array('Element Inner Forces', se, ['eID', 'N1', 'Q1', 'M1', 'N2', 'Q2', 'M2'])
+    logging_array('Element Inner Forces', se, ['eID', 'N1', 'Q1', 'M1', 'N2', 'Q2', 'M2'], eng=True)
 
 
 if __name__ == '__main__':
