@@ -1,4 +1,4 @@
-# Beam cantilever
+# python FEM for 2D beams
 """
 Finite ELement Analysis of Beam structure in 2D (xz), Element formulation based on Kirchhoff equations
 """
@@ -269,10 +269,10 @@ def beam2d_initialstress(x1: np.ndarray, x2: np.ndarray, N: float = 0.0):
 
 def assemble(lm: np.ndarray, K: np.ndarray, ke: np.ndarray, eID: int):
     """
-    Function for localisation of element stiffness matrix into global stiffness matrix
+    Function for localisation of element matrix into global matrix
     :param lm:  Array of code numbers
-    :param K:   Global stiffness matrix
-    :param ke:  Element stiffness matrix
+    :param K:   Global matrix
+    :param ke:  Element matrix
     :param eID: Element ID (1 based)
     :return:    K - Global stiffness matrix
     """
@@ -531,7 +531,7 @@ def beam2d(structure_directory: str = 'console'):
     # array of materials
     mt = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/mt.dat'), dtype=float)
     logging.debug(f'mt:\n{mt}')
-    logging_array('Materials', mt, ['mID', 'g', 'E', 'nu', 'alpha'])
+    logging_array('Materials', mt, ['mID', 'ro', 'E', 'nu', 'alpha'])
 
     # array of properties
     pt = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/pt.dat'), dtype=float)
@@ -549,8 +549,9 @@ def beam2d(structure_directory: str = 'console'):
 
     # array of elemental loads
     fe = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/fe.dat'))
-    logging_array('Elemental loads', fe, ['ldID', 'lpatID', 'eID', 'fx', 'fz', 'dt'],
-                  dtype=['int', 'int', 'int', 'float', 'float', 'float'])
+    if fe is not None:
+        logging_array('Elemental loads', fe, ['ldID', 'lpatID', 'eID', 'fx', 'fz', 'dt'],
+                      dtype=['int', 'int', 'int', 'float', 'float', 'float'])
 
     # DOF localisation matrices
     ndofs, ncdofs, lmn, lme, lmd = localisation_matrix(nd, el, cs)
@@ -564,76 +565,132 @@ def beam2d(structure_directory: str = 'console'):
     # model info
     logging_table('Model info', [['nodes', nnode], ['elements', nelem], ['dofs', ndofs], ['dofs constrained', ncdofs]])
 
-    # load vector
-    f = np.zeros((ndofs, 1))
-    assemble_load_nodal(f, lmn, fn)
-    for i in range(fe.shape[0]):
-        eID = int(fe[i][1])
-        assemble_load_elemental(lme, f, beam2d_load(nd[el[eID - 1][2] - 1],
-                                                    nd[el[eID - 1][3] - 1],
-                                                    fe[i][2], fe[i][3]), eID)
-        assemble_load_elemental(lme, f, beam2d_temp(nd[el[eID - 1][2] - 1], nd[el[eID - 1][3] - 1],
-                                                    pt[el[eID - 1][1] - 1][0], mt[el[eID - 1][0] - 1][1],
-                                                    mt[el[eID - 1][0] - 1][2], fe[i][4]), eID)
-    logging.debug(f'f:\n{f}')
-    logging_array('Right side vector', f, ['dofID', 'F'])
+    if solver == 'linear static':
+        # load vector
+        f = np.zeros((ndofs, 1))
+        if fn is not None:
+            assemble_load_nodal(f, lmn, fn)
+        if fe is not None:
+            for i in range(fe.shape[0]):
+                eID = int(fe[i][1])
+                assemble_load_elemental(lme, f, beam2d_load(nd[el[eID - 1][2] - 1],
+                                                            nd[el[eID - 1][3] - 1],
+                                                            fe[i][2], fe[i][3]), eID)
+                assemble_load_elemental(lme, f, beam2d_temp(nd[el[eID - 1][2] - 1], nd[el[eID - 1][3] - 1],
+                                                            pt[el[eID - 1][1] - 1][0], mt[el[eID - 1][0] - 1][1],
+                                                            mt[el[eID - 1][0] - 1][2], fe[i][4]), eID)
+        logging.debug(f'f:\n{f}')
+        logging_array('Right side vector', f, ['dofID', 'F'])
 
-    # property values
-    # EA = 1.0
-    # EI = 1.0
+        # preparation of load vector, stiffness matrix, displacement vector
+        K = np.zeros((ndofs, ndofs), dtype=float)
+        u = np.zeros((ndofs, 1), dtype=float)
 
-    # preparation of load vector, stiffness matrix, displacement vector
-    K = np.zeros((ndofs, ndofs), dtype=float)
-    u = np.zeros((ndofs, 1), dtype=float)
+        # creation of local stiffness matrix and localisation
+        for i in range(nelem):
+            assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
+                                              pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+                                              mt[el[i][0] - 1][1]), i + 1)
+        logging.debug(f'K:\n{K}')
+        tmp = ['DOF']
+        tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
+        logging_array('Stiffness Matrix', K, tmp, eng=True)
+        del tmp
 
-    # creation of local stiffness matrix and localisation
-    for i in range(nelem):
-        assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
-                                          pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
-                                          mt[el[i][0] - 1][1]), i + 1)
-    logging.debug(f'K:\n{K}')
-    tmp = ['DOF']
-    tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
-    logging_array('Stiffness Matrix', K, tmp, eng=True)
-    del tmp
+        # solving the displacements
+        u[ncdofs:] = linalg.solve(K[ncdofs:, ncdofs:], f[ncdofs:])
+        logging.debug(f'u:\n{u}')
+        logging_array('Resulting displacements', u, ['dofID', 'du'])
 
-    # solving the displacements
-    u[ncdofs:] = linalg.solve(K[ncdofs:, ncdofs:], f[ncdofs:])
-    logging.debug(f'u:\n{u}')
-    logging_array('Resulting displacements', u, ['dofID', 'du'])
+        ndu = u[lmn - 1].reshape((-1, 3))
+        logging.debug(f'ndu:\n{ndu}')
+        logging_array('Nodal displacements', ndu, ['nID', 'dX', 'dZ', 'dFi'])
 
-    ndu = u[lmn - 1].reshape((-1, 3))
-    logging.debug(f'ndu:\n{ndu}')
-    logging_array('Nodal displacements', ndu, ['nID', 'dX', 'dZ', 'dFi'])
+        # reactions
+        f[:ncdofs] = K[:ncdofs, ncdofs:] @ u[ncdofs:]
+        logging.debug(f'f:\n{f}')
+        logging_array('Resulting reactions', f[:ncdofs], ['dofID', 'R'])
+        r = np.zeros((cs.shape[0], lmn.shape[1] + 1))
+        for i in range(cs.shape[0]):
+            r[i][0] = cs[i][0]
+            for j in range(cs[i][1:].shape[0]):
+                if cs[i][j + 1] == 1:
+                    r[i][j + 1] = f[lmn[cs[i][0] - 1][j] - 1]
+                else:
+                    r[i][j + 1] = np.NaN
+        logging.debug(f'r:\n{r}')
+        logging_array('Nodal reactions', r, ['cID', 'nID', 'Fx', 'Fz', 'My'])
 
-    # reactions
-    f[:ncdofs] = K[:ncdofs, ncdofs:] @ u[ncdofs:]
-    logging.debug(f'f:\n{f}')
-    logging_array('Resulting reactions', f[:ncdofs], ['dofID', 'R'])
-    r = np.zeros((cs.shape[0], lmn.shape[1] + 1))
-    for i in range(cs.shape[0]):
-        r[i][0] = cs[i][0]
-        for j in range(cs[i][1:].shape[0]):
-            if cs[i][j + 1] == 1:
-                r[i][j + 1] = f[lmn[cs[i][0] - 1][j] - 1]
-            else:
-                r[i][j + 1] = np.NaN
-    logging.debug(f'r:\n{r}')
-    logging_array('Nodal reactions', r, ['cID', 'nID', 'Fx', 'Fz', 'My'])
+        # element displacements
+        ue = u[lme - 1].reshape((nelem, lme.shape[1]))
+        logging.debug(f'ue:\n{ue}')
+        logging_array('Elemental displacements', ue, ['eID', 'dX1', 'dZ1', 'dFi1', 'dX2', 'dZ2', 'dFi2'], eng=True)
 
-    # element displacements
-    ue = u[lme - 1].reshape((nelem, lme.shape[1]))
-    logging.debug(f'ue:\n{ue}')
-    logging_array('Elemental displacements', ue, ['eID', 'dX1', 'dZ1', 'dFi1', 'dX2', 'dZ2', 'dFi2'], eng=True)
+        # element inner forces
+        se = np.zeros((nelem, 6))
+        for i in range(nelem):
+            se[i] = beam2d_postpro(nd[el[i][2] - 1], nd[el[i][3] - 1], ue[i],
+                                   pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+                                   mt[el[i][0] - 1][1])
+        logging.debug(f'se:\n{se}')
+        logging_array('Element Inner Forces', se, ['eID', 'N1', 'Q1', 'M1', 'N2', 'Q2', 'M2'], eng=True)
 
-    # element inner forces
-    se = np.zeros((nelem, 6))
-    for i in range(nelem):
-        se[i] = beam2d_postpro(nd[el[i][2] - 1], nd[el[i][3] - 1], ue[i],
-                               pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
-                               mt[el[i][0] - 1][1])
-    logging.debug(f'se:\n{se}')
-    logging_array('Element Inner Forces', se, ['eID', 'N1', 'Q1', 'M1', 'N2', 'Q2', 'M2'], eng=True)
+    elif solver == 'eigenvalues':
+        # preparation of  stiffness matrix, mass matrix, displacement vector
+        K = np.zeros((ndofs, ndofs), dtype=float)
+        M = np.zeros((ndofs, ndofs), dtype=float)
+        u = np.zeros((ndofs, ndofs - ncdofs), dtype=float)
+
+        # creation of local stiffness matrix and localisation
+        for i in range(nelem):
+            assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
+                                              pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+                                              mt[el[i][0] - 1][1]), i + 1)
+        logging.debug(f'K:\n{K}')
+        tmp = ['DOF']
+        tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
+        logging_array('Stiffness Matrix', K, tmp, eng=True)
+        del tmp
+
+        # creation of local mass matrix and localisation
+        for i in range(nelem):
+            assemble(lme, M, beam2d_mass(nd[el[i][2] - 1], nd[el[i][3] - 1],
+                                         pt[el[i][1] - 1][0], mt[el[i][0] - 1][0]), i + 1)
+        logging.debug(f'M:\n{M}')
+        tmp = ['DOF']
+        tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
+        logging_array('Mass Matrix', M, tmp, eng=True)
+        del tmp
+
+        # solving the displacements
+        # u[ncdofs:] = linalg.eig(K[ncdofs:, ncdofs:], M[ncdofs:, ncdofs:])
+        # eigenvalues, u[ncdofs:, :] = linalg.eigh(K[ncdofs:, ncdofs:], M[ncdofs:, ncdofs:])
+        # eigenvalues = np.real(eigenvalues).reshape((ndofs - ncdofs, 1))
+        # u *= 1.0 / np.max(np.abs(u), axis=0)
+
+        eigenvalue, u[ncdofs:, :] = linalg.eig(K[ncdofs:, ncdofs:], M[ncdofs:, ncdofs:])
+        logging.debug(f'eigenvalues:\n{eigenvalue}')
+        logging.debug(f'eigenvectors:\n{u}')
+        eigenvalue = np.real(eigenvalue)
+        idx = np.flip(eigenvalue.argsort()[::-1])
+        eigenvalue = eigenvalue[idx].reshape((ndofs - ncdofs, 1))
+        u = u[:, idx]
+        del idx
+        omega = np.sqrt(eigenvalue)
+        eigenfrequency = omega / (2.0 * math.pi)
+
+        # normalise shapes to 1
+        u *= 1.0 / np.max(np.abs(u), axis=0)
+
+        tmp = np.hstack((eigenvalue, omega, eigenfrequency))
+
+        logging_array('Resulting Eigenvalues:', tmp, ['Mode ID', 'Eigenvalue', 'Circular Frequency', 'Eigenfrequency'])
+        del tmp
+
+        tmp = [' DOF']
+        tmp.extend([' {0:9.2f}Hz'.format(eigenfrequency[i][0]) for i in range(eigenfrequency.shape[0])])
+        logging_array('Eigenshapes', u, tmp, eng=True)
+        del tmp
 
 
 if __name__ == '__main__':
