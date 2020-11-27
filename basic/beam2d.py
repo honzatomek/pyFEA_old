@@ -6,6 +6,8 @@ Finite ELement Analysis of Beam structure in 2D (xz), Element formulation based 
 import os, sys
 import math
 import argparse
+import tkinter as tk
+from tkinter import Tk, Canvas, Frame, BOTH
 from configparser import ConfigParser
 import numpy as np
 from scipy import linalg
@@ -527,6 +529,105 @@ def load_dat(file: str, dtype: type = float):
         logging.exception(f'Failed reading {file}')
 
 
+class Geometry(tk.Frame):
+    def __init__(self, root, width: float = 1600.0, height: float = 968.0, title: str = 'pyFEA Geoplot'):
+        super().__init__()
+        self.root = root
+        self.title = title
+        self.canvas = None
+        self.lines = []
+        self.width = width
+        self.height = height
+        self.margin = (self.width / 20, self.height / 20)
+        self.initUI()
+
+    def initUI(self):
+        self.master.title(self.title)
+        self.pack(fill=tk.BOTH, expand=tk.YES)
+
+        self.canvas = tk.Canvas(self.root, width=self.width, height=self.height)
+        self.canvas.pack(fill=tk.BOTH, expand=tk.YES)
+
+        self.master.bind('<Configure>', self.resize)
+
+    def resize(self, event):
+        self.width = event.width
+        self.height = event.height
+        self.margin = (self.width / 20, self.height / 20)
+        self.replot()
+
+    def add_line(self, x1: np.ndarray, x2: np.ndarray, dash=None):
+        self.lines.append([x1[0], x1[1], x2[0], x2[1], dash])
+
+    def replot(self):
+        self.canvas.delete('all')
+        self.plot_lines()
+
+    def plot_lines(self):
+        self.lines = np.array(self.lines, dtype=object)
+        # extents = (xmin, xmax, zmin, zmax)
+        extents = (np.min(self.lines[:, [0, 2]]), np.max(self.lines[:, [0, 2]]),
+                   np.min(self.lines[:, [1, 3]]), np.max(self.lines[:, [1, 3]]))
+        scale = [(extents[1] - extents[0]) / (self.width - 2 * self.margin[0]),
+                 (extents[3] - extents[2]) / (self.height - 2 * self.margin[1])]
+        scale = [1.0 if s == 0.0 else s for s in scale]
+        scale = [1 / s for s in scale]
+        scale = min(scale)
+        center = (self.width / 2, self.height / 2)
+        for line in self.lines:
+            x1 = scale * (line[0] - (extents[1] + extents[0]) / 2) + center[0]
+            z1 = self.height - (scale * (line[1] - (extents[3] + extents[2]) / 2) + center[1])
+            x2 = scale * (line[2] - (extents[1] + extents[0]) / 2) + center[0]
+            z2 = self.height - (scale * (line[3] - (extents[3] + extents[2]) / 2) + center[1])
+            self.canvas.create_line(x1, z1, x2, z2, dash=line[4])
+        self.canvas.pack(fill=tk.BOTH, expand=tk.YES)
+
+
+def plot_geometry(nd: np.ndarray, el: np.ndarray):
+    root = tk.Tk()
+    # root.geometry('1600x968+300+300')
+    geometry = Geometry(root)
+
+    for eID in range(1, el.shape[0] + 1):
+        nd1 = el[eID - 1][2]
+        nd2 = el[eID - 1][3]
+        geometry.add_line(nd[nd1 - 1], nd[nd2 - 1])
+
+    geometry.plot_lines()
+
+    root.mainloop()
+
+
+def plot_deformed(nd: np.ndarray, el: np.ndarray, ue: np.ndarray):
+    root = tk.Tk()
+    # root.geometry('1600x968+300+300')
+    geometry = Geometry(root)
+    scale = [0.0, 0.0]
+    try:
+        scale[0] = np.max(np.abs(ue)) / (np.max(nd[:, 0]) - np.min(nd[:, 0])) * 10.0
+    except ZeroDivisionError as e:
+        scale[0] = 1.0
+    try:
+        scale[1] = np.max(np.abs(ue)) / (np.max(nd[:, 1]) - np.min(nd[:, 1])) * 10.0
+    except ZeroDivisionError as e:
+        scale[1] = 1.0
+    scale = 1 / min(scale)
+
+    for eID in range(1, el.shape[0] + 1):
+        nd1 = nd[el[eID - 1][2] - 1]
+        nd2 = nd[el[eID - 1][3] - 1]
+        geometry.add_line(nd1, nd2)
+        u1 = ue[eID - 1][:2, 1]
+        u2 = ue[eID - 1][3:5, 1]
+        ndd1 = nd1 + u1 * scale
+        ndd2 = nd2 + u2 * scale
+        geometry.add_line(ndd1, ndd2, dash=(4, 2))
+
+    geometry.plot_lines()
+
+    root.mainloop()
+
+
 def beam2d(structure_directory: str = 'console'):
     logging.debug(f'call beam2d({structure_directory})')
     cfg = ConfigParser()
@@ -698,7 +799,7 @@ def beam2d(structure_directory: str = 'console'):
         # solving the eigenvalues and eigenshapes - only first N, up to ndofs-1
         if solver in cfg.sections():
             if 'modes' in cfg[solver].keys():
-                number_of_eigenvalues = 3
+                number_of_eigenvalues = int(cfg[solver]['modes'])
                 u = np.zeros((ndofs, number_of_eigenvalues))
                 eigenvalue, u[ncdofs:, :] = sclinalg.eigsh(K[ncdofs:, ncdofs:], number_of_eigenvalues,
                                                            M[ncdofs:, ncdofs:], which='SM')
@@ -731,6 +832,15 @@ def beam2d(structure_directory: str = 'console'):
         tmp.extend([' {0:9.2f}Hz'.format(eigenfrequency[i][0]) for i in range(eigenfrequency.shape[0])])
         logging_array('Eigenshapes', u, tmp, eng=True)
         del tmp
+
+        ue = u[lme - 1]
+
+        if solver in cfg.sections():
+            if 'plot' in cfg[solver].keys():
+                if 'geometry' in [s.strip() for s in cfg[solver]['plot'].split(',')]:
+                    plot_geometry(nd, el)
+                if 'deformed' in  [s.strip() for s in cfg[solver]['plot'].split(',')]:
+                    plot_deformed(nd, el, ue)
 
         return eigenfrequency, u
 
