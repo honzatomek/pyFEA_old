@@ -7,7 +7,7 @@ import os, sys
 import math
 import argparse
 import tkinter as tk
-from tkinter import Tk, Canvas, Frame, BOTH
+from PIL import Image, ImageDraw, ImageTk
 from configparser import ConfigParser
 import numpy as np
 from scipy import linalg
@@ -548,7 +548,43 @@ class Geometry(tk.Frame):
         self.canvas = tk.Canvas(self.root, width=self.width, height=self.height)
         self.canvas.pack(fill=tk.BOTH, expand=tk.YES)
 
+        self.draw_background()
+
         self.master.bind('<Configure>', self.resize)
+
+    def draw_background(self):
+        # steps = int(self.height)
+        steps = min(int(self.height), 100)
+        from_color = (0.0, 0.0, 0.0)
+        to_color = (0.0, 0.0, 255.0)
+
+        r = from_color[0]
+        g = from_color[1]
+        b = from_color[2]
+
+        dr = float(to_color[0] - r) / steps
+        dg = float(to_color[1] - g) / steps
+        db = float(to_color[2] - b) / steps
+
+        img_height = int(self.height)
+        img_width = int(self.width)
+
+        image = Image.new("RGB", (img_width, img_height), "#FFFFFF")
+        draw = ImageDraw.Draw(image)
+
+        for i in range(steps):
+            r, g, b = r + dr, g + dg, b+ db
+            y0 = int(float(img_height * i) / steps)
+            y1 = int(float(img_height * (i + 1)) / steps)
+
+            draw.rectangle((0, y0, img_width, y1), fill=(int(r), int(g), int(b)))
+
+        self.gradient_photoimage = ImageTk.PhotoImage(image)
+
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.gradient_photoimage)
+
+        self.canvas.pack(fill=tk.BOTH, expand=tk.YES)
+
 
     def resize(self, event):
         self.width = event.width
@@ -561,6 +597,7 @@ class Geometry(tk.Frame):
 
     def replot(self):
         self.canvas.delete('all')
+        self.draw_background()
         self.plot_lines()
 
     def plot_lines(self):
