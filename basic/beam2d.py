@@ -9,6 +9,7 @@ import argparse
 from configparser import ConfigParser
 import numpy as np
 from scipy import linalg
+from scipy.sparse import linalg as sclinalg
 
 import logging
 
@@ -415,6 +416,9 @@ def format_eng(value, format_spec: str = ' {0:9.3f}E{1:+03n}'):
     except OverflowError as e:
         logging.exception(e)
         return str('{0:' + str(len(format_eng(1.1, format_spec))) + 'n}').format(np.infty)
+    except ValueError as e:
+        logging.exception(e)
+        return str('{0:' + str(len(format_eng(1.1, format_spec))) + 'n}').format(np.nan)
 
 
 def logging_array(title: str, arr: np.ndarray, header_list: list, dtype: list = None, eng: bool = False):
@@ -679,18 +683,34 @@ def beam2d(structure_directory: str = 'console'):
         logging_array('Mass Matrix', M, tmp, eng=True)
         del tmp
 
-        # solving the displacements
-        # u[ncdofs:] = linalg.eig(K[ncdofs:, ncdofs:], M[ncdofs:, ncdofs:])
-        # eigenvalues, u[ncdofs:, :] = linalg.eigh(K[ncdofs:, ncdofs:], M[ncdofs:, ncdofs:])
-        # eigenvalues = np.real(eigenvalues).reshape((ndofs - ncdofs, 1))
-        # u *= 1.0 / np.max(np.abs(u), axis=0)
+        # # solving the eigenvalues and eigenshapes - all of them
+        # eigenvalue, u[ncdofs:, :] = linalg.eigh(K[ncdofs:, ncdofs:], M[ncdofs:, ncdofs:])
+        # logging.debug(f'eigenvalues:\n{eigenvalue}')
+        # logging.debug(f'eigenvectors:\n{u}')
+        # eigenvalue = np.real(eigenvalue)
+        # idx = np.flip(eigenvalue.argsort()[::-1])
+        # eigenvalue = eigenvalue[idx].reshape((ndofs - ncdofs, 1))
+        # u = u[:, idx]
+        # del idx
+        # omega = np.sqrt(eigenvalue)
+        # eigenfrequency = omega / (2.0 * math.pi)
 
-        eigenvalue, u[ncdofs:, :] = linalg.eig(K[ncdofs:, ncdofs:], M[ncdofs:, ncdofs:])
+        # solving the eigenvalues and eigenshapes - only first N, up to ndofs-1
+        if solver in cfg.sections():
+            if 'modes' in cfg[solver].keys():
+                number_of_eigenvalues = 3
+                u = np.zeros((ndofs, number_of_eigenvalues))
+                eigenvalue, u[ncdofs:, :] = sclinalg.eigsh(K[ncdofs:, ncdofs:], number_of_eigenvalues,
+                                                           M[ncdofs:, ncdofs:], which='SM')
+        else:
+            eigenvalue, u[ncdofs:, :] = linalg.eigh(K[ncdofs:, ncdofs:], M[ncdofs:, ncdofs:])
+
         logging.debug(f'eigenvalues:\n{eigenvalue}')
         logging.debug(f'eigenvectors:\n{u}')
-        eigenvalue = np.real(eigenvalue)
+        logging.info(f' >>> Eigenvalues found: {eigenvalue.shape[0]}')
+        # eigenvalue = np.real(eigenvalue)
         idx = np.flip(eigenvalue.argsort()[::-1])
-        eigenvalue = eigenvalue[idx].reshape((ndofs - ncdofs, 1))
+        eigenvalue = eigenvalue[idx].reshape((eigenvalue.shape[0], 1))
         u = u[:, idx]
         del idx
         omega = np.sqrt(eigenvalue)
@@ -701,8 +721,10 @@ def beam2d(structure_directory: str = 'console'):
 
         tmp = np.hstack((eigenvalue, omega, eigenfrequency))
 
-        logging_array('Resulting Eigenvalues:', tmp, ['Mode ID', 'Eigenvalue', 'Circular Frequency', 'Eigenfrequency'],
+        logging_array('Resulting Eigenvalues', tmp, ['Mode ID', 'Lambda', 'Omega', 'Freq'],
                       ['int', 'eng', 'eng', 'float'])
+        # logging_array('Resulting Eigenvalues:', tmp, ['Mode ID', u'\u03bb'.encode('utf-8'), 'Circular Frequency', 'Eigenfrequency'],
+        #               ['int', 'eng', 'eng', 'float'])
         del tmp
 
         tmp = [' DOF']
