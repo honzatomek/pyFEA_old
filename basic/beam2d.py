@@ -138,9 +138,9 @@ def beam2d_mass_consistent(L: float = 1.0, A: float = 1.0, ro: float = 1.0, nsm:
     mce = np.zeros((6, 6), dtype=float)
     mce = np.array([[140.0, 0.0, 0.0, 70.0, 0.0, 0.0],
                     [0.0, 156.0, 22.0 * L, 0.0, 54.0, -13.0 * L],
-                    [0.0, 2.0 * L, 4.0 * (L ** 2.0), 0.0, 13.0 * L, -3.0 * (L ** 2.0)],
+                    [0.0, 22.0 * L, 4.0 * (L ** 2.0), 0.0, 13.0 * L, -3.0 * (L ** 2.0)],
                     [70.0, 0.0, 0.0, 140.0, 0.0, 0.0],
-                    [0.0, 54.0, 13.0 * L, 0.0, 156.0, -22 * L],
+                    [0.0, 54.0, 13.0 * L, 0.0, 156.0, -22.0 * L],
                     [0.0, -13.0 * L, -3.0 * (L ** 2), 0.0, -22.0 * L, 4.0 * (L ** 2.0)]], dtype=float)
     mce *= (sm + nm) / 420.0
 
@@ -405,12 +405,16 @@ def format_norm(value, format_spec):
 
 
 def format_eng(value, format_spec: str = ' {0:9.3f}E{1:+03n}'):
-    if value == 0.0:
-        return format_spec.format(0.0, 0)
-    exponent = int(math.log10(abs(value)))
-    exponent = exponent - exponent % 3
-    mantissa = value / (10 ** exponent)
-    return format_spec.format(mantissa, exponent)
+    try:
+        if value == 0.0:
+            return format_spec.format(0.0, 0)
+        exponent = int(math.log10(abs(value)))
+        exponent = exponent - exponent % 3
+        mantissa = value / (10 ** exponent)
+        return format_spec.format(mantissa, exponent)
+    except OverflowError as e:
+        logging.exception(e)
+        return str('{0:' + str(len(format_eng(1.1, format_spec))) + 'n}').format(np.infty)
 
 
 def logging_array(title: str, arr: np.ndarray, header_list: list, dtype: list = None, eng: bool = False):
@@ -455,9 +459,20 @@ def logging_array(title: str, arr: np.ndarray, header_list: list, dtype: list = 
                 else:
                     fmth.append(' {0:^10s}')
                     fmtv.append([format_norm, ' {0:10.1f}'])
-            else:
+            elif dt == 'eng':
+                fmth.append(' {0:^12s}')
+                fmtv.append([format_eng, ' {0:8.3f}E{1:+03n}'])
+            elif dt == 'str':
                 fmth.append(' {0:^16s}')
                 fmtv.append([format_norm, ' {0:16s}'])
+            else:
+                if 'E' in dt:
+                    length = len(format_eng(1.1, dt))
+                    fmtv.append([format_eng, dt])
+                else:
+                    length = len(dt.format(1.1))
+                    fmtv.append([format_norm, dt])
+                fmth.append(' {0:^' + str(length) + 's}')
             fmth[0] = ' ' + fmth[0]
             fmtv[0][1] = ' ' + fmtv[0][1]
 
@@ -510,45 +525,46 @@ def load_dat(file: str, dtype: type = float):
 
 
 def beam2d(structure_directory: str = 'console'):
-    logging.info(f'call beam2d({structure_directory})')
+    logging.debug(f'call beam2d({structure_directory})')
     cfg = ConfigParser()
-    cfg.read(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/g.ini'))
+    cfg.read(os.path.join(structure_directory, 'g.ini'))
     solver = cfg['DEFAULT']['solver']
+    logging.info(f'\n\n\tStarting {solver} analysis of {structure_directory}\n\n')
 
     # array of node coordinates
-    nd = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/nd.dat'), dtype=float)
+    nd = load_dat(os.path.join(structure_directory, 'nd.dat'), dtype=float)
     nnode = nd.shape[0]
     logging.debug(f'nd:\n{nd}')
     logging_array('Node Coordinates', nd, ['nID', 'x', 'z'])
 
     # array of element connectivity
-    el = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/el.dat'), dtype=int)
+    el = load_dat(os.path.join(structure_directory, 'el.dat'), dtype=int)
     nelem = el.shape[0]
     logging.debug(f'el:\n{el}')
     logging_array('Element Connectivity', el,
                   ['eID', 'mID', 'pID', 'nd1', 'nd2', 'Rx1', 'Rz1', 'Rfi1', 'Rx2', 'Rz2', 'Rfi2'])
 
     # array of materials
-    mt = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/mt.dat'), dtype=float)
+    mt = load_dat(os.path.join(structure_directory, 'mt.dat'), dtype=float)
     logging.debug(f'mt:\n{mt}')
     logging_array('Materials', mt, ['mID', 'ro', 'E', 'nu', 'alpha'])
 
     # array of properties
-    pt = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/pt.dat'), dtype=float)
+    pt = load_dat(os.path.join(structure_directory, 'pt.dat'), dtype=float)
     logging.debug(f'pt:\n{pt}')
     logging_array('Properties', mt, ['pID', 'A', 'I', 'W', 'Ash'])
 
     # array of suppressed nodes
-    cs = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/cs.dat'), dtype=int)
+    cs = load_dat(os.path.join(structure_directory, 'cs.dat'), dtype=int)
     logging_array('Nodal constraints', cs, ['cID', 'nID', 'Cx', 'Cz', 'Cy'])
 
     # array of nodal loads
-    fn = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/fn.dat'))
+    fn = load_dat(os.path.join(structure_directory, 'fn.dat'))
     logging_array('Nodal loads', fn, ['ldID', 'lpatID', 'nID', 'Fx', 'Fz', 'My'],
                   dtype=['int', 'int', 'int', 'float', 'float', 'float'])
 
     # array of elemental loads
-    fe = load_dat(os.path.join(os.path.dirname(__file__), f'structures/{structure_directory}/fe.dat'))
+    fe = load_dat(os.path.join(structure_directory, 'fe.dat'))
     if fe is not None:
         logging_array('Elemental loads', fe, ['ldID', 'lpatID', 'eID', 'fx', 'fz', 'dt'],
                       dtype=['int', 'int', 'int', 'float', 'float', 'float'])
@@ -619,7 +635,7 @@ def beam2d(structure_directory: str = 'console'):
                 else:
                     r[i][j + 1] = np.NaN
         logging.debug(f'r:\n{r}')
-        logging_array('Nodal reactions', r, ['cID', 'nID', 'Fx', 'Fz', 'My'])
+        logging_array('Nodal reactions', r, ['cID', 'nID', 'Fx', 'Fz', 'My'], eng=True)
 
         # element displacements
         ue = u[lme - 1].reshape((nelem, lme.shape[1]))
@@ -634,6 +650,8 @@ def beam2d(structure_directory: str = 'console'):
                                    mt[el[i][0] - 1][1])
         logging.debug(f'se:\n{se}')
         logging_array('Element Inner Forces', se, ['eID', 'N1', 'Q1', 'M1', 'N2', 'Q2', 'M2'], eng=True)
+
+        return ndu, r, ue, se
 
     elif solver == 'eigenvalues':
         # preparation of  stiffness matrix, mass matrix, displacement vector
@@ -655,7 +673,7 @@ def beam2d(structure_directory: str = 'console'):
         # creation of local mass matrix and localisation
         for i in range(nelem):
             assemble(lme, M, beam2d_mass(nd[el[i][2] - 1], nd[el[i][3] - 1],
-                                         pt[el[i][1] - 1][0], mt[el[i][0] - 1][0]), i + 1)
+                                         pt[el[i][1] - 1][0], mt[el[i][0] - 1][0], mi=0.5), i + 1)
         logging.debug(f'M:\n{M}')
         tmp = ['DOF']
         tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
@@ -684,13 +702,16 @@ def beam2d(structure_directory: str = 'console'):
 
         tmp = np.hstack((eigenvalue, omega, eigenfrequency))
 
-        logging_array('Resulting Eigenvalues:', tmp, ['Mode ID', 'Eigenvalue', 'Circular Frequency', 'Eigenfrequency'])
+        logging_array('Resulting Eigenvalues:', tmp, ['Mode ID', 'Eigenvalue', 'Circular Frequency', 'Eigenfrequency'],
+                      ['int', 'eng', 'eng', 'float'])
         del tmp
 
         tmp = [' DOF']
         tmp.extend([' {0:9.2f}Hz'.format(eigenfrequency[i][0]) for i in range(eigenfrequency.shape[0])])
         logging_array('Eigenshapes', u, tmp, eng=True)
         del tmp
+
+        return eigenfrequency, u
 
 
 if __name__ == '__main__':
@@ -703,7 +724,7 @@ if __name__ == '__main__':
 
     logging.info(f'{__file__} started')
     parser = argparse.ArgumentParser()
-    parser.add_argument('structure', type=str, help='directory name of structure from ./structures directory')
+    parser.add_argument('structure', type=str, help='directory name of the structure')
 
     args = parser.parse_args()
 
