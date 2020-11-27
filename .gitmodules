@@ -1,3 +1,3 @@
 [submodule "pyEngine3D"]
-	path = pyEngine3D
+	path = playground/pyEngine3D
 	url = git@github.com:honzatomek/pyEngine3D.git
