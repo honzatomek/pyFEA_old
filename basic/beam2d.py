@@ -483,7 +483,6 @@ def logging_array(title: str, arr: np.ndarray, header_list: list, dtype: list = 
     message += header.rstrip(' ')
     message += delimit
     for i in range(arr.shape[0]):
-        # message += '\n' + fmtv[0].format(i + 1) + ''.join([fmtv[j + 1].format(arr[i][j]) for j in range(arr.shape[1])])
         message += '\n' + fmtv[0][0](i + 1, fmtv[0][1]) \
                    + ''.join([fmtv[j + 1][0](arr[i][j], fmtv[j + 1][1]) for j in range(arr.shape[1])])
     message += delimit
