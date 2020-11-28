@@ -536,9 +536,17 @@ class Geometry(tk.Frame):
         self.title = title
         self.canvas = None
         self.lines = []
+        self.displacement = []
+        self.disp_scale = 1.0
+        self.deformed = False
         self.width = width
         self.height = height
         self.margin = (self.width / 20, self.height / 20)
+        self.timesteps = 20
+        self.timestep = -1
+        self.step = 1
+        self.curves = []
+        self.bg = None
         self.initUI()
 
     def initUI(self):
@@ -581,42 +589,85 @@ class Geometry(tk.Frame):
 
         self.gradient_photoimage = ImageTk.PhotoImage(image)
 
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.gradient_photoimage)
+        self.bg = self.canvas.create_image(0, 0, anchor=tk.NW, image=self.gradient_photoimage)
 
         self.canvas.pack(fill=tk.BOTH, expand=tk.YES)
-
 
     def resize(self, event):
         self.width = event.width
         self.height = event.height
         self.margin = (self.width / 20, self.height / 20)
+        self.canvas.delete(self.bg)
+        self.canvas.bg = None
+        self.draw_background()
         self.replot()
 
     def add_line(self, x1: np.ndarray, x2: np.ndarray, dash=None):
         self.lines.append([x1[0], x1[1], x2[0], x2[1], dash])
 
-    def replot(self):
-        self.canvas.delete('all')
-        self.draw_background()
-        self.plot_lines()
+    def add_line_displacement(self, x1: np.ndarray, x2: np.ndarray):
+        self.displacement.append([x1[0], x1[1], x2[0], x2[1]])
 
-    def plot_lines(self):
+    def replot(self, animation_scale: float = 1.0):
+        # self.canvas.delete('all')
+        # self.draw_background()
+        for curve in self.curves:
+            self.canvas.delete(curve)
+        self.curves = []
+        self.plot_lines(deformed=self.deformed, disp_scale=self.disp_scale, animation_scale=animation_scale)
+
+    def animate(self):
+        self.timestep += self.step
+        if self.timestep == self.timesteps:
+            self.step = -1
+        elif self.timestep == 0:
+            self.step = 1
+        scale = -1.0 + 2.0 / self.timesteps * self.timestep
+        self.replot(scale)
+        self.after(100, self.animate)
+
+    def plot_lines(self, deformed: bool = False, disp_scale: float = 1.0, animation_scale: float = 1.0):
         self.lines = np.array(self.lines, dtype=object)
+        self.displacement = np.array(self.displacement, dtype=float)
+        self.deformed = deformed
+        self.disp_scale = disp_scale
         # extents = (xmin, xmax, zmin, zmax)
-        extents = (np.min(self.lines[:, [0, 2]]), np.max(self.lines[:, [0, 2]]),
-                   np.min(self.lines[:, [1, 3]]), np.max(self.lines[:, [1, 3]]))
+        if deformed:
+            extents = (min(np.min(self.lines[:, [0, 2]] + self.displacement[:, [0, 2]] * self.disp_scale),
+                           np.min(self.lines[:, [0, 2]] - self.displacement[:, [0, 2]] * self.disp_scale)),
+                       max(np.max(self.lines[:, [0, 2]] + self.displacement[:, [0, 2]] * self.disp_scale),
+                           np.max(self.lines[:, [0, 2]] - self.displacement[:, [0, 2]] * self.disp_scale)),
+                       min(np.min(self.lines[:, [1, 3]] + self.displacement[:, [1, 3]] * self.disp_scale),
+                           np.min(self.lines[:, [1, 3]] - self.displacement[:, [1, 3]] * self.disp_scale)),
+                       max(np.max(self.lines[:, [1, 3]] + self.displacement[:, [1, 3]] * self.disp_scale),
+                           np.max(self.lines[:, [1, 3]] - self.displacement[:, [1, 3]] * self.disp_scale)))
+        else:
+            extents = (np.min(self.lines[:, [0, 2]]), np.max(self.lines[:, [0, 2]]),
+                       np.min(self.lines[:, [1, 3]]), np.max(self.lines[:, [1, 3]]))
         scale = [(extents[1] - extents[0]) / (self.width - 2 * self.margin[0]),
                  (extents[3] - extents[2]) / (self.height - 2 * self.margin[1])]
         scale = [1.0 if s == 0.0 else s for s in scale]
         scale = [1 / s for s in scale]
         scale = min(scale)
         center = (self.width / 2, self.height / 2)
-        for line in self.lines:
-            x1 = scale * (line[0] - (extents[1] + extents[0]) / 2) + center[0]
-            z1 = self.height - (scale * (line[1] - (extents[3] + extents[2]) / 2) + center[1])
-            x2 = scale * (line[2] - (extents[1] + extents[0]) / 2) + center[0]
-            z2 = self.height - (scale * (line[3] - (extents[3] + extents[2]) / 2) + center[1])
-            self.canvas.create_line(x1, z1, x2, z2, dash=line[4])
+        s = self.disp_scale * animation_scale
+        for i in range(len(self.lines)):
+            line = self.lines[i]
+            d = self.displacement[i]
+
+            if self.deformed:
+                tmp = scale * (line[0] - (extents[1] + extents[0]) / 2) + center[0]
+                x1 = scale * (line[0] + d[0] * s - (extents[1] + extents[0]) / 2) + center[0]
+                z1 = self.height - (scale * (line[1] + d[1] * s - (extents[3] + extents[2]) / 2) + center[1])
+                x2 = scale * (line[2] + d[2] * s - (extents[1] + extents[0]) / 2) + center[0]
+                z2 = self.height - (scale * (line[3] + d[3] * s - (extents[3] + extents[2]) / 2) + center[1])
+            else:
+                x1 = scale * (line[0] - (extents[1] + extents[0]) / 2) + center[0]
+                z1 = self.height - (scale * (line[1] - (extents[3] + extents[2]) / 2) + center[1])
+                x2 = scale * (line[2] - (extents[1] + extents[0]) / 2) + center[0]
+                z2 = self.height - (scale * (line[3] - (extents[3] + extents[2]) / 2) + center[1])
+            self.curves.append(self.canvas.create_line(x1, z1, x2, z2, dash=line[4],
+                                                       fill='#{0:02x}{1:02x}{2:02x}'.format(255, 255, 255)))
         self.canvas.pack(fill=tk.BOTH, expand=tk.YES)
 
 
@@ -650,17 +701,17 @@ def plot_deformed(nd: np.ndarray, el: np.ndarray, ue: np.ndarray):
         scale[1] = 1.0
     scale = 1 / min(scale)
 
+    eig = 1
     for eID in range(1, el.shape[0] + 1):
         nd1 = nd[el[eID - 1][2] - 1]
         nd2 = nd[el[eID - 1][3] - 1]
         geometry.add_line(nd1, nd2)
-        u1 = ue[eID - 1][:2, 1]
-        u2 = ue[eID - 1][3:5, 1]
-        ndd1 = nd1 + u1 * scale
-        ndd2 = nd2 + u2 * scale
-        geometry.add_line(ndd1, ndd2, dash=(4, 2))
+        u1 = ue[eID - 1][:2, eig - 1]
+        u2 = ue[eID - 1][3:5, eig - 1]
+        geometry.add_line_displacement(u1, u2)
 
-    geometry.plot_lines()
+    geometry.plot_lines(deformed=True, disp_scale=scale)
+    geometry.animate()
 
     root.mainloop()
 
