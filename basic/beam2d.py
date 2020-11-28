@@ -547,11 +547,18 @@ def logging_array(title: str, arr: np.ndarray, header_list: list, dtype: list = 
             fmth[0] = ' ' + fmth[0]
             fmtv[0][1] = ' ' + fmtv[0][1]
 
-    header = '\n' + ''.join([fmth[i].format(header_list[i]) for i in range(len(header_list))])
-    delimit = '\n ' + (len(header) - 1) * '-'
+    if type(header_list[0]) == list:
+        header = ''
+        for hl in header_list:
+            header += '\n' + ''.join([fmth[i].format(header_list[i]) for i in range(len(hl))])
+            delimit = '\n ' + (len(header) - 1) * '-'
+            header = header.rstrip(' ')
+    else:
+        header = '\n' + ''.join([fmth[i].format(header_list[i]) for i in range(len(header_list))])
+        delimit = '\n ' + (len(header) - 1) * '-'
+        header = header.rstrip(' ')
 
     message = delimit
-    message += header.rstrip(' ')
     message += delimit
     for i in range(arr.shape[0]):
         message += '\n' + fmtv[0][0](i + 1, fmtv[0][1]) \
@@ -861,12 +868,12 @@ def beam2d(structure_directory: str = 'console'):
 
         # creation of local stiffness matrix and localisation
         for i in range(nelem):
-            # assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
-            #                                   pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
-            #                                   mt[el[i][0] - 1][1]), i + 1)
-            assemble(lme, K, beam2d_stiffness_timoshenko(nd[el[i][2] - 1], nd[el[i][3] - 1],
-                                                     pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
-                                                     mt[el[i][0] - 1][1], mt[el[i][0] - 1][2]), i + 1)
+            assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
+                                              pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+                                              mt[el[i][0] - 1][1]), i + 1)
+            # assemble(lme, K, beam2d_stiffness_timoshenko(nd[el[i][2] - 1], nd[el[i][3] - 1],
+            #                                              pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+            #                                              mt[el[i][0] - 1][1], mt[el[i][0] - 1][2]), i + 1)
         logging.debug(f'K:\n{K}')
         tmp = ['DOF']
         tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
@@ -921,12 +928,12 @@ def beam2d(structure_directory: str = 'console'):
 
         # creation of local stiffness matrix and localisation
         for i in range(nelem):
-            # assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
-            #                                   pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
-            #                                   mt[el[i][0] - 1][1]), i + 1)
-            assemble(lme, K, beam2d_stiffness_timoshenko(nd[el[i][2] - 1], nd[el[i][3] - 1],
-                                                         pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
-                                                         mt[el[i][0] - 1][1], mt[el[i][0] - 1][2]), i + 1)
+            assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
+                                              pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+                                              mt[el[i][0] - 1][1]), i + 1)
+            # assemble(lme, K, beam2d_stiffness_timoshenko(nd[el[i][2] - 1], nd[el[i][3] - 1],
+            #                                              pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+            #                                              mt[el[i][0] - 1][1], mt[el[i][0] - 1][2]), i + 1)
         logging.debug(f'K:\n{K}')
         tmp = ['DOF']
         tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
@@ -943,27 +950,16 @@ def beam2d(structure_directory: str = 'console'):
         logging_array('Mass Matrix', M, tmp, eng=True)
         del tmp
 
-        # # solving the eigenvalues and eigenshapes - all of them
-        # eigenvalue, u[ncdofs:, :] = linalg.eigh(K[ncdofs:, ncdofs:], M[ncdofs:, ncdofs:])
-        # logging.debug(f'eigenvalues:\n{eigenvalue}')
-        # logging.debug(f'eigenvectors:\n{u}')
-        # eigenvalue = np.real(eigenvalue)
-        # idx = np.flip(eigenvalue.argsort()[::-1])
-        # eigenvalue = eigenvalue[idx].reshape((ndofs - ncdofs, 1))
-        # u = u[:, idx]
-        # del idx
-        # omega = np.sqrt(eigenvalue)
-        # eigenfrequency = omega / (2.0 * math.pi)
-
-        # solving the eigenvalues and eigenshapes - only first N, up to ndofs-1
         if solver in cfg.sections():
+            # solving the eigenvalues and eigenshapes - only first N, up to ndofs-1
             if 'modes' in cfg[solver].keys():
                 number_of_eigenvalues = int(cfg[solver]['modes'])
                 u = np.zeros((ndofs, number_of_eigenvalues))
                 eigenvalue, u[ncdofs:, :] = sclinalg.eigsh(K[ncdofs:, ncdofs:], number_of_eigenvalues,
                                                            M[ncdofs:, ncdofs:], which='SM')
-        else:
-            eigenvalue, u[ncdofs:, :] = linalg.eigh(K[ncdofs:, ncdofs:], M[ncdofs:, ncdofs:])
+            # # solving the eigenvalues and eigenshapes - all of them
+            else:
+                eigenvalue, u[ncdofs:, :] = linalg.eigh(K[ncdofs:, ncdofs:], M[ncdofs:, ncdofs:])
 
         logging.debug(f'eigenvalues:\n{eigenvalue}')
         logging.debug(f'eigenvectors:\n{u}')
