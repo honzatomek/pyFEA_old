@@ -99,6 +99,71 @@ def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, A: float = 1.0, I: float = 
     return ke
 
 
+def beam2d_stiffness_timoshenko_lcs(l: float = 1.0, A: float = 1.0, I: float = 1.0, E: float = 1.0,
+                                    nu: float = 0.3, k: float = (5.0 / 6.0)):
+    """
+    Element stiffness matrix of beam element (Timoshenko, 2D)
+    axial + bending 1 integration point, shear 2 integration points, reduced integration
+    due to shear locking
+    :param l:  Element length
+    :param A:  Cross section area
+    :param E:  Young's Modulus
+    :param nu: Poisson's ratio
+    :param k:  Timoshenko shear correction coefficient (5/6 = rectangular section, 6/7 = circular section)
+    :return:   ke - shear part of element stiffness matrix in 2D
+    """
+    logging.info(f'call beam2d_stiffness_timoshenko_lcs()')
+    logging.debug(f'call beam2d_stiffness_timoshenko_lcs({l}, {A}, {E}, {nu}, {k})')
+    G = E / (2 * (1 + nu))
+    kuu = np.array([[1, -1], [-1, 1]], dtype=float) * E * A / l
+    kww = np.array([[1, -1], [-1, 1]], dtype=float) * k * G * A / l
+    kwf = np.array([[-0.5, -0.5], [0.5, 0.5]], dtype=float) * k * G * A
+    # kff = np.array([[1, -1], [-1, 1]], dtype=float) * E * I / l \
+    #       + np.array([[1 / 3, 1 / 6], [1 / 6, 1 / 3]], dtype=float) * k * G * A * l  # full integration
+    kff = np.array([[1, -1], [-1, 1]], dtype=float) * E * I / l \
+          + np.array([[1 / 4, 1 / 4], [1 / 4, 1 / 4]], dtype=float) * k * G * A * l    # reduced integration
+
+    ke = np.zeros((6, 6), dtype=float)
+    ke[[0, 3], [[0], [3]]] += kuu
+    ke[[1, 4], [[1], [4]]] += kww
+    ke[[1, 4], [[2], [5]]] += kwf.T
+    ke[[2, 5], [[1], [4]]] += kwf
+    ke[[2, 5], [[2], [5]]] += kff
+
+    return ke
+
+
+def beam2d_stiffness_timoshenko(x1: np.ndarray, x2: np.ndarray,
+                                A: float = 1.0, I: float = 1.0, E: float = 1.0, nu: float = 0.3):
+    """
+    Function to compute stiffness matrix of beam element in GCS (Timoshenko, 2D)
+    :param x1: Coordinates of start of element [x1, z1]
+    :param x2: Coordinates of end of element [x1, z1]
+    :param A:  Section Area
+    :param I:  Moment of Inertia
+    :param E:  Young's Modulus
+    :param nu: Poison's ratio
+    :return:   ke - beam element stiffness matrix in GCS 2D (6, 6)
+    """
+    logging.info(f'call beam2d_stiffness_timoshenko()')
+    logging.debug(f'call beam2d_stiffness_timoshenko({x1}, {x2}, {A}, {I}, {E}, {nu})')
+    length = math.sqrt((x2[0] - x1[0]) ** 2 + (x2[1] - x1[1]) ** 2)
+    EA = E * A
+    EI = E * I
+    # local element stiffness
+    # kl = beam2d_stiffness_timoshenko_axial(length, A, E) \
+    #      + beam2d_stiffness_timoshenko_bending(length, I, E) \
+    #      + beam2d_stiffness_timoshenko_shear(length, A, E, nu, 5.0 / 6.0)
+    kl = beam2d_stiffness_timoshenko_lcs(length, A, I, E, nu, 5.0 / 6.0)
+    # transformation matrix
+    t = beam2d_t(x1, x2)
+
+    # transformation LCS -> GCS
+    ke = t.T @ kl @ t
+
+    return ke
+
+
 def beam2d_mass_lumped(L: float = 1.0, A: float = 1.0, ro: float = 1.0, nsm: float = 0.0):
     """
     Function to compute lumped mass matrix of beam element in LCS (2D)
@@ -796,9 +861,12 @@ def beam2d(structure_directory: str = 'console'):
 
         # creation of local stiffness matrix and localisation
         for i in range(nelem):
-            assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
-                                              pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
-                                              mt[el[i][0] - 1][1]), i + 1)
+            # assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
+            #                                   pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+            #                                   mt[el[i][0] - 1][1]), i + 1)
+            assemble(lme, K, beam2d_stiffness_timoshenko(nd[el[i][2] - 1], nd[el[i][3] - 1],
+                                                     pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+                                                     mt[el[i][0] - 1][1], mt[el[i][0] - 1][2]), i + 1)
         logging.debug(f'K:\n{K}')
         tmp = ['DOF']
         tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
@@ -853,9 +921,12 @@ def beam2d(structure_directory: str = 'console'):
 
         # creation of local stiffness matrix and localisation
         for i in range(nelem):
-            assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
-                                              pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
-                                              mt[el[i][0] - 1][1]), i + 1)
+            # assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
+            #                                   pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+            #                                   mt[el[i][0] - 1][1]), i + 1)
+            assemble(lme, K, beam2d_stiffness_timoshenko(nd[el[i][2] - 1], nd[el[i][3] - 1],
+                                                         pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+                                                         mt[el[i][0] - 1][1], mt[el[i][0] - 1][2]), i + 1)
         logging.debug(f'K:\n{K}')
         tmp = ['DOF']
         tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
