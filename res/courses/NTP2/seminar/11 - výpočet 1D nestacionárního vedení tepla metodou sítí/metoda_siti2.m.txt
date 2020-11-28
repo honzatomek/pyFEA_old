@@ -1,0 +1,27 @@
+% metoda siti pro prestup tepla - 2. priklad
+
+t_2_old = 2;
+t_3_old = 2;
+lambda = 2;
+delta_t = 100;
+rho = 2500;
+c = 1000;
+h = 0.1;
+t1 = 5;
+alfa = 4;
+t_inf = 15;
+
+%kontrola casoveho kroku
+kontrola = 2*lambda*delta_t/(rho*c*h*h)
+
+
+%vypocet
+for i=1:200
+   t_2_new = t_2_old + lambda*delta_t/(rho*c*h*h)*(t1 - 2*t_2_old + t_3_old)
+   %var 2.
+   t_3_new = (lambda*t_2_new + alfa*h*t_inf)/(lambda + alfa*h)
+   %var 3.
+   %t_3_new = t_inf - lambda*(t_inf - t_2_new)/(alfa*2*h) 
+   t_2_old = t_2_new;
+   t_3_old = t_3_new;
+end
