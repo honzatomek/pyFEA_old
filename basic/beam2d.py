@@ -929,12 +929,12 @@ def beam2d(structure_directory: str = 'console'):
 
         # creation of local stiffness matrix and localisation
         for i in range(nelem):
-            # assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
-            #                                   pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
-            #                                   mt[el[i][0] - 1][1]), i + 1)
-            assemble(lme, K, beam2d_stiffness_timoshenko(nd[el[i][2] - 1], nd[el[i][3] - 1],
-                                                         pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
-                                                         mt[el[i][0] - 1][1], mt[el[i][0] - 1][2]), i + 1)
+            assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
+                                              pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+                                              mt[el[i][0] - 1][1]), i + 1)
+            # assemble(lme, K, beam2d_stiffness_timoshenko(nd[el[i][2] - 1], nd[el[i][3] - 1],
+            #                                              pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+            #                                              mt[el[i][0] - 1][1], mt[el[i][0] - 1][2]), i + 1)
         logging.debug(f'K:\n{K}')
         tmp = ['DOF']
         tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
