@@ -550,7 +550,7 @@ def logging_array(title: str, arr: np.ndarray, header_list: list, dtype: list = 
     if type(header_list[0]) == list:
         header = ''
         for hl in header_list:
-            header += '\n' + ''.join([fmth[i].format(header_list[i]) for i in range(len(hl))])
+            header += '\n' + ''.join([fmth[i].format(hl[i]) for i in range(len(hl))])
             delimit = '\n ' + (len(header) - 1) * '-'
             header = header.rstrip(' ')
     else:
@@ -559,6 +559,7 @@ def logging_array(title: str, arr: np.ndarray, header_list: list, dtype: list = 
         header = header.rstrip(' ')
 
     message = delimit
+    message += header
     message += delimit
     for i in range(arr.shape[0]):
         message += '\n' + fmtv[0][0](i + 1, fmtv[0][1]) \
@@ -773,7 +774,7 @@ def plot_deformed(nd: np.ndarray, el: np.ndarray, ue: np.ndarray):
         scale[1] = 1.0
     scale = 1 / min(scale)
 
-    eig = 1
+    eig = 3
     for eID in range(1, el.shape[0] + 1):
         nd1 = nd[el[eID - 1][2] - 1]
         nd2 = nd[el[eID - 1][3] - 1]
@@ -928,12 +929,12 @@ def beam2d(structure_directory: str = 'console'):
 
         # creation of local stiffness matrix and localisation
         for i in range(nelem):
-            assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
-                                              pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
-                                              mt[el[i][0] - 1][1]), i + 1)
-            # assemble(lme, K, beam2d_stiffness_timoshenko(nd[el[i][2] - 1], nd[el[i][3] - 1],
-            #                                              pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
-            #                                              mt[el[i][0] - 1][1], mt[el[i][0] - 1][2]), i + 1)
+            # assemble(lme, K, beam2d_stiffness(nd[el[i][2] - 1], nd[el[i][3] - 1],
+            #                                   pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+            #                                   mt[el[i][0] - 1][1]), i + 1)
+            assemble(lme, K, beam2d_stiffness_timoshenko(nd[el[i][2] - 1], nd[el[i][3] - 1],
+                                                         pt[el[i][1] - 1][0], pt[el[i][1] - 1][1],
+                                                         mt[el[i][0] - 1][1], mt[el[i][0] - 1][2]), i + 1)
         logging.debug(f'K:\n{K}')
         tmp = ['DOF']
         tmp.extend(['{0:n}'.format(i) for i in range(ndofs)])
@@ -983,8 +984,10 @@ def beam2d(structure_directory: str = 'console'):
         #               ['int', 'eng', 'eng', 'float'])
         del tmp
 
-        tmp = [' DOF']
-        tmp.extend([' {0:9.2f}Hz'.format(eigenfrequency[i][0]) for i in range(eigenfrequency.shape[0])])
+        tmp = [['Mode']]
+        tmp[0].extend([' {0:^11s}'.format('{0:n}'.format(i + 1)) for i in range(eigenfrequency.shape[0])])
+        tmp.append(['DOF'])
+        tmp[1].extend([' {0:^11s}'.format('{0:.2f} Hz'.format(eigenfrequency[i][0])) for i in range(eigenfrequency.shape[0])])
         logging_array('Eigenshapes', u, tmp, eng=True)
         del tmp
 
