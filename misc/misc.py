@@ -72,7 +72,8 @@ class Data:
 
     @classmethod
     def count(cls):
-        return cls._counter
+        # return cls._counter
+        return len(cls._ids)
 
     @classmethod
     def next_free_id(cls):
@@ -215,6 +216,29 @@ class DataSet(Data):
                 message += '\n' + str(obj)
             message += '\n'
         return message
+
+    def __iter__(self):
+        self.__n = 0
+        return self
+
+    def __next__(self):
+        if self.__n < len(self.objects):
+            n = self.__n
+            self.__n += 1
+            return self.objects[n]
+        else:
+            raise StopIteration
+
+    def get(self, identifier: (int, str)):
+        if isinstance(identifier, int):
+            for obj in self.objects:
+                if obj.id == identifier:
+                    return obj
+        elif isinstance(identifier, str):
+            for obj in self.objects:
+                if obj.label == identifier:
+                    return obj
+        return None
 
 
 if __name__ == '__main__':
