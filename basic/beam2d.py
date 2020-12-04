@@ -89,7 +89,7 @@ def beam2d_stiffness(x1: np.ndarray, x2: np.ndarray, A: float = 1.0, I: float = 
     EA = E * A
     EI = E * I
     # local element stiffness
-    kl = beam2d_stiffness_lcs(length, EA, EI)
+    kl = beam2d_stiffness_lcs(length, A, I, E)
     # transformation matrix
     t = beam2d_t(x1, x2)
 
