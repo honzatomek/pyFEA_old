@@ -83,6 +83,15 @@ class TestData(unittest.TestCase):
 
 class TestDataSet(unittest.TestCase):
     def test_init(self):
+        ds1 = DataSet(Data)
+        self.assertTrue(ds1.id > 0)
+        self.assertTrue(ds1.label != '')
+        with self.assertRaises(DuplicateIDError):
+            ds2 = DataSet(Data, id=ds1.id)
+        with self.assertRaises(DuplicateLabelError):
+            ds3 = DataSet(Data, label=ds1.label)
+
+    def test_add(self):
         ds = DataSet(Data)
         print(ds.id)
         print(ds.label)

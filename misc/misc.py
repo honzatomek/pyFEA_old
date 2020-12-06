@@ -49,9 +49,12 @@ class Data:
 
     @classmethod
     def __del(cls, obj: object):
-        if obj.id is not None:
+        try:
             cls._ids.remove(obj.id)
             cls._counter -= 1
+        except (AttributeError, KeyError):
+            pass
+
         remove = set()
         for ref in cls._instances:
             if obj == ref():
