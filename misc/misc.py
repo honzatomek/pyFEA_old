@@ -6,7 +6,8 @@ import numpy as np
 from misc.errors import *
 
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
+# logger = logging.getLogger()
 
 
 def format_eng(value: float, format_spec: str = ' {0:10.4f}E{1:+03n}'):
@@ -24,13 +25,13 @@ def format_eng(value: float, format_spec: str = ' {0:10.4f}E{1:+03n}'):
         mantissa = value / (10 ** exponent)
         return format_spec.format(mantissa, exponent)
     except OverflowError as e:
-        logging.exception(e)
+        logger.exception(e)
         return str('{0:' + str(len(format_eng(1.1, format_spec))) + 'n}').format(np.infty)
     except ValueError as e:
-        logging.exception(e)
+        logger.exception(e)
         return str('{0:' + str(len(format_eng(1.1, format_spec))) + 'n}').format(np.nan)
     except TypeError as e:
-        logging.exception(e)
+        logger.exception(e)
         return str('{0:' + str(len(format_eng(1.1, format_spec))) + 'n}').format(np.nan)
 
 
@@ -43,9 +44,13 @@ class Data:
 
     @classmethod
     def __add(cls, obj: object):
-        cls._ids.add(obj.id)
-        cls._instances.add(weakref.ref(obj))
-        cls._counter += 1
+        try:
+            cls._ids.add(obj.id)
+            cls._instances.add(weakref.ref(obj))
+            cls._counter += 1
+        except AttributeError as e:
+            logger.exception(e)
+            raise e
 
     @classmethod
     def __del(cls, obj: object):
@@ -75,8 +80,7 @@ class Data:
 
     @classmethod
     def count(cls):
-        # return cls._counter
-        return len(cls._ids)
+        return cls._counter
 
     @classmethod
     def next_free_id(cls):
@@ -109,7 +113,7 @@ class Data:
         return None
 
     @classmethod
-    def getType(cls, obj_type: object):
+    def getType(cls, obj_type: type):
         for instance in cls.__get_instances():
             if isinstance(instance, obj_type):
                 yield instance
@@ -177,7 +181,7 @@ class DataSet(Data):
             raise TypeError(f'{str(obj):s} is neither an instance of class nor subclass of {self.type.__name__}')
 
     def _create_object(self, obj_type: type, *args, **kwargs):
-        if obj_type is type(self) or issubclass(obj_type, self.type):
+        if obj_type is self.type or issubclass(obj_type, self.type):
             self.objects.append(obj_type(*args, **kwargs))
         else:
             raise TypeError(f'{obj_type.__name__:s} is neither {self.type.__name__} nor its sublcass')
@@ -231,6 +235,9 @@ class DataSet(Data):
             return self.objects[n]
         else:
             raise StopIteration
+
+    def number(self):
+        return len(self.objects)
 
     def get(self, identifier: (int, str)):
         if isinstance(identifier, int):

@@ -93,17 +93,98 @@ class TestDataSet(unittest.TestCase):
 
     def test_add(self):
         ds = DataSet(Data)
-        print(ds.id)
-        print(ds.label)
-        ds._add_object(Data(id=100))
-        ds._add_object(Data(id=101))
-        ds._add_object(Data(id=102))
-        ds._add_object(Data(id=104))
-        print(repr(ds))
-        print(str(ds))
+        num = 10
+        for i in range(num):
+            ds._add_object(Data(id=i + 1))
+        self.assertEqual(ds.number(), num)
+
+    def test_create(self):
+        ds = DataSet(Data)
+        num = 10
+        for i in range(num):
+            ds._create_object(Data, id=i+1)
+        self.assertEqual(ds.number(), num)
+
+        with self.assertRaises(TypeError):
+            ds._create_object(DataSet, label='test')
+
+        dss = DataSet(Data)
+        dss._create_object(DataSet, DataSet, id=num + 1)
+        self.assertEqual(dss.number(), 1)
+
+    def test_get_objects_by_type(self):
+        dss = DataSet(Data)
+        numd = 5
+        numds = 6
+        for i in range(numd):
+            dss._add_object(Data(i + 1))
+
+        for i in range(numds):
+            dss._add_object(DataSet(Data))
+
+        objects = dss._get_objects_by_type()
+        self.assertEqual(len(objects.keys()), 2)
+        self.assertEqual(len(objects['Data']), numd)
+        self.assertEqual(len(objects['DataSet']), numds)
+
+    def test_repr(self):
+        ds = DataSet(Data, id=1, label='test')
+        num = 10
+        for i in range(num):
+            ds._add_object(Data(id=i + 1))
+        expected_reply = '''DataSet(id=1, label='test')
+DataSet.getID(1)._add_obj(Data(id=1))
+DataSet.getID(1)._add_obj(Data(id=2))
+DataSet.getID(1)._add_obj(Data(id=3))
+DataSet.getID(1)._add_obj(Data(id=4))
+DataSet.getID(1)._add_obj(Data(id=5))
+DataSet.getID(1)._add_obj(Data(id=6))
+DataSet.getID(1)._add_obj(Data(id=7))
+DataSet.getID(1)._add_obj(Data(id=8))
+DataSet.getID(1)._add_obj(Data(id=9))
+DataSet.getID(1)._add_obj(Data(id=10))
+'''
+        self.assertEqual(repr(ds), expected_reply)
+
+    def test_str(self):
+        ds = DataSet(Data)
+        num = 10
+        for i in range(num):
+            ds._add_object(Data(id=i + 1))
+        expected_reply = '''
+$DSET TYPE = Data
+            1
+            2
+            3
+            4
+            5
+            6
+            7
+            8
+            9
+           10
+'''
+        self.assertEqual(str(ds), expected_reply)
+
+    def test_iterator(self):
+        ds = DataSet(Data)
+        num = 10
+        for i in range(num):
+            ds._add_object(Data(id=i + 1))
+
+        for i, data in enumerate(ds):
+            self.assertEqual(data.id, i + 1)
+
+    def test_get(self):
+        ds = DataSet(Data)
+        ds._add_object(Data(id=1, label='test1'))
+        ds._add_object(Data(id=2, label='test2'))
+        self.assertEqual(ds.get(1).label, 'test1')
+        self.assertEqual(ds.get('test2').id, 2)
 
 
 if __name__ == '__main__':
     logger = logging.getLogger()
     logger.disabled = True
+    logging.disable(logging.FATAL)
     unittest.main(verbosity=2)
