@@ -33,8 +33,8 @@ class Element_Test(unittest.TestCase):
         els.add_bar2D(2, m.id, p.id, 2, 3,
                       [0, 0, 0], [0, 0, 0])
         els.add_rod2D(3, m.id, p.id, 3, 4)
-        self.assertTrue(Bar2D.count() == 2)
-        self.assertTrue(Rod2D.count() == 1)
+        self.assertTrue(Bar2D.instances() == 2)
+        self.assertTrue(Rod2D.instances() == 1)
 
 
 class Bar2D_Test(unittest.TestCase):

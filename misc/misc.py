@@ -64,8 +64,16 @@ class Data:
         for ref in cls._instances:
             if obj == ref():
                 remove.add(ref)
-                # cls.__instances.remove(ref)
         cls._instances -= remove
+
+    @classmethod
+    def __remove_dead_refs(cls):
+        dead = set()
+        for ref in cls._instances:
+            obj = ref()
+            if obj is None:
+                dead.add(ref)
+        cls._instances -= dead
 
     @classmethod
     def __get_instances(cls):
@@ -79,7 +87,7 @@ class Data:
         cls._instances -= dead
 
     @classmethod
-    def count(cls):
+    def instances(cls):
         return cls._counter
 
     @classmethod
@@ -138,7 +146,7 @@ class Data:
         if id is None:
             id = type(self).next_free_id()
         elif not isinstance(id, int):
-            raise AttributeError(f'{type(self).__name__:s} id must be of type int (value: {str(id):s})')
+            raise AttributeError(f'{type(self).__name__:s} id must be of _type int (value: {str(id):s})')
         if type(self).id_exists(id):
             message = f'Duplicate {type(self).__name__} ID: {id}'
             logger.error(message)
@@ -168,23 +176,43 @@ class Data:
 
 
 class DataSet(Data):
+    _type = Data
     _ids = set()
     _instances = set()
     _counter = 0
-    _command = 'DSET'
+    _command = 'GENERIC'
     _last_label_id = 0
 
+    @classmethod
+    def collect(cls):
+        """
+        Class method to collect objects of all DataSet classes of the same _type, concatenate them
+        and return only one DataSet class containing all of the objects.
+        :return: DataSet instance containing objects of all existing DataSet instances
+        """
+        # master DataSet
+        mds = cls()
+        for ref in cls._instances:
+            ds = ref()
+            if ds is not mds:
+                for obj in ds:
+                    mds._add_object(obj)
+        return mds
+
     def _add_object(self, obj):
-        if isinstance(obj, self.type) or issubclass(type(obj), self.type):
+        if isinstance(obj, self._type) or issubclass(type(obj), self._type):
             self.objects.append(obj)
+            self._im.setdefault(obj.id, self.count() - 1)
         else:
-            raise TypeError(f'{str(obj):s} is neither an instance of class nor subclass of {self.type.__name__}')
+            raise TypeError(f'{str(obj):s} is neither an instance of class nor subclass of {self._type.__name__}')
 
     def _create_object(self, obj_type: type, *args, **kwargs):
-        if obj_type is self.type or issubclass(obj_type, self.type):
-            self.objects.append(obj_type(*args, **kwargs))
+        if obj_type is self._type or issubclass(obj_type, self._type):
+            obj = obj_type(*args, **kwargs)
+            self.objects.append(obj)
+            self._im.setdefault(obj.id, self.count() - 1)
         else:
-            raise TypeError(f'{obj_type.__name__:s} is neither {self.type.__name__} nor its sublcass')
+            raise TypeError(f'{obj_type.__name__:s} is neither {self._type.__name__} nor its sublcass')
 
     def _get_objects_by_type(self):
         objects_by_type = {}
@@ -195,7 +223,7 @@ class DataSet(Data):
                 objects_by_type[type(obj).__name__].append(obj)
         return objects_by_type
 
-    def __init__(self, obj_type: type, id: int = None, label: str = None):
+    def __init__(self, obj_type: type = None, id: int = None, label: str = None):
         if id is None:
             id = type(self).next_free_id()
         if label is None:
@@ -205,8 +233,10 @@ class DataSet(Data):
             logger.error(message)
             raise DuplicateLabelError(message)
         super(DataSet, self).__init__(id=id, label=label)
-        self.type = obj_type
+        if obj_type is not None:
+            self._type = obj_type
         self.objects = []
+        self._im = {}  # mapping of ids
 
     def __repr__(self):
         message = f"{type(self).__name__:s}(id={self.id:n}, label='{self.label:s}')\n"
@@ -218,9 +248,9 @@ class DataSet(Data):
         message = ''
         objs_by_type = self._get_objects_by_type()
         for obj_type in objs_by_type.keys():
-            message += f'\n${type(self)._command:s} TYPE = {obj_type:s}'
+            message += f'${type(self)._command:s} TYPE = {obj_type:s}\n'
             for obj in objs_by_type[obj_type]:
-                message += '\n' + str(obj)
+                message += str(obj) + '\n'
             message += '\n'
         return message
 
@@ -236,14 +266,15 @@ class DataSet(Data):
         else:
             raise StopIteration
 
-    def number(self):
+    def count(self):
         return len(self.objects)
 
     def get(self, identifier: (int, str)):
         if isinstance(identifier, int):
-            for obj in self.objects:
-                if obj.id == identifier:
-                    return obj
+            return self.objects[self._im[identifier]]
+            # for obj in self.objects:
+            #     if obj.id == identifier:
+            #         return obj
         elif isinstance(identifier, str):
             for obj in self.objects:
                 if obj.label == identifier:

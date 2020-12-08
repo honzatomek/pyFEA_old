@@ -22,10 +22,10 @@ class TestData(unittest.TestCase):
 
     def test_add_del(self):
         d = Data(id=1, label='test data')
-        self.assertEqual(Data.count(), 1)
+        self.assertEqual(Data.instances(), 1)
         self.assertTrue(Data.id_exists(1))
         del d
-        self.assertEqual(Data.count(), 0)
+        self.assertEqual(Data.instances(), 0)
         self.assertFalse(Data.id_exists(1))
 
     def test_duplicate(self):
@@ -91,26 +91,42 @@ class TestDataSet(unittest.TestCase):
         with self.assertRaises(DuplicateLabelError):
             ds3 = DataSet(Data, label=ds1.label)
 
-    def test_add(self):
+    def test_collect(self):
+        ds1 = DataSet(Data)
+        ds2 = DataSet(Data)
+        for i in range(10):
+            ds1._add_object(Data(i + 1))
+            ds2._add_object(Data(i + 11))
+        ds3 = DataSet.collect()
+        del ds1
+        del ds2
+        self.assertEqual(ds3.count(), 20)
+        print(repr(ds3))
+
+    def test_add_object(self):
         ds = DataSet(Data)
         num = 10
         for i in range(num):
             ds._add_object(Data(id=i + 1))
-        self.assertEqual(ds.number(), num)
+        self.assertEqual(ds.count(), num)
 
-    def test_create(self):
+    def test_create_object(self):
         ds = DataSet(Data)
         num = 10
         for i in range(num):
             ds._create_object(Data, id=i+1)
-        self.assertEqual(ds.number(), num)
+        self.assertEqual(ds.count(), num)
 
         with self.assertRaises(TypeError):
-            ds._create_object(DataSet, label='test')
+            ds._create_object(int)
 
         dss = DataSet(Data)
         dss._create_object(DataSet, DataSet, id=num + 1)
-        self.assertEqual(dss.number(), 1)
+        self.assertEqual(dss.count(), 1)
+
+        dss2 = DataSet(DataSet)
+        with self.assertRaises(TypeError):
+            dss2._create_object(Data, id=num + 2)
 
     def test_get_objects_by_type(self):
         dss = DataSet(Data)
@@ -151,8 +167,7 @@ DataSet.getID(1)._add_obj(Data(id=10))
         num = 10
         for i in range(num):
             ds._add_object(Data(id=i + 1))
-        expected_reply = '''
-$DSET TYPE = Data
+        expected_reply = '''$GENERIC TYPE = Data
             1
             2
             3
@@ -163,6 +178,7 @@ $DSET TYPE = Data
             8
             9
            10
+
 '''
         self.assertEqual(str(ds), expected_reply)
 
