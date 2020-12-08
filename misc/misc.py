@@ -2,6 +2,8 @@ import math
 import logging
 import weakref
 import numpy as np
+from functools import wraps
+from time import time
 
 from misc.errors import *
 
@@ -33,6 +35,17 @@ def format_eng(value: float, format_spec: str = ' {0:10.4f}E{1:+03n}'):
     except TypeError as e:
         logger.exception(e)
         return str('{0:' + str(len(format_eng(1.1, format_spec))) + 'n}').format(np.nan)
+
+
+def timer(f):
+    @wraps
+    def wrap(*args, **kwargs):
+        ts = time()
+        result = f(*args, **kwargs)
+        te = time()
+        logging.info(f'{f.__name__} took {te - ts:2.4f} s')
+        return result
+    return wrap
 
 
 class Data:
