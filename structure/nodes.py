@@ -4,7 +4,7 @@ from misc.misc import format_eng, Data, DataSet
 from misc.errors import *
 
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class Node2D(Data):
@@ -15,6 +15,7 @@ class Node2D(Data):
     _instances = set()
     _counter = 0
     _command = 'NODE'
+    _last_label_id = 0
 
     @classmethod
     def from_str(cls, string: str):
@@ -97,11 +98,11 @@ class Nodes2D(DataSet):
                 nodes._add_object(Node2D.from_str(line))
         return nodes
 
-    def __init__(self):
-        super(Nodes2D, self).__init__(Node2D)
+    def __init__(self, id: int = None, label: str = None):
+        super(Nodes2D, self).__init__(Node2D, id, label)
 
-    def stat(self):
-        return self.count(), min(self._im.keys()), max(self._im.keys())
+    def node_ids(self):
+        return self._object_ids()
 
     def add(self, id: int, x: float, z: float, label: str = None):
         self._create_object(self._type, id, x, z, label)

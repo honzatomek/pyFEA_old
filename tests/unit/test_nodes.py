@@ -33,7 +33,6 @@ class Node2D_Test(unittest.TestCase):
             self.assertEqual(x, nd.x)
             self.assertEqual(z, nd.z)
 
-
     def test_coor(self):
         id = 1
         x = 1000.
@@ -60,6 +59,15 @@ class Nodes2D_Test(unittest.TestCase):
                   '7\t1.E3\t4.E3']
         nds = Nodes2D.from_str('\n'.join(string))
         self.assertEqual(nds.count(), 7)
+
+    def test_stat(self):
+        nds = Nodes2D(id=1, label='test')
+        for i in range(2):
+            nds.add((i + 1) * 1000, i * 1000.0, 0., f'test_{i + 1:n}')
+        num, minid, maxid = nds.stat()
+        self.assertEqual(num, 2)
+        self.assertEqual(minid, 1000)
+        self.assertEqual(maxid, 2000)
 
     def test_add(self):
         id = 1
@@ -95,16 +103,23 @@ class Nodes2D_Test(unittest.TestCase):
         self.assertEqual(nds.get(id + 1).id, id + 1)
 
     def test_str(self):
-        nds = Nodes2D()
-        for i in range(10):
+        nds = Nodes2D(id=1, label='test')
+        for i in range(2):
             nds.add(i + 1, i * 1000.0, 0., f'test_{i + 1:n}')
-        print(str(nds))
+        expected_result = """$NODE TYPE = Node2D
+         1      0.0000E+00      0.0000E+00  : test_1
+         2      1.0000E+03      0.0000E+00  : test_2
+"""
+        self.assertEqual(str(nds), expected_result)
 
     def test_repr(self):
-        nds = Nodes2D()
-        for i in range(10):
+        nds = Nodes2D(id=1, label='all nodes')
+        for i in range(2):
             nds.add(i + 1, i * 1000.0, 0., f'test_{i + 1:n}')
-        print(repr(nds))
+        expected_result = """Nodes2D(id=1, label='all nodes')
+Nodes2D.getID(1)._add_obj(Node2D(id=1, x=0.0000E+00, z=0.0000E+00, label='test_1'))
+Nodes2D.getID(1)._add_obj(Node2D(id=2, x=1.0000E+03, z=0.0000E+00, label='test_2'))"""
+        self.assertEqual(repr(nds), expected_result)
 
 
 if __name__ == '__main__':

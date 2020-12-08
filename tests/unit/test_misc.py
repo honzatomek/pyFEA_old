@@ -101,7 +101,6 @@ class TestDataSet(unittest.TestCase):
         del ds1
         del ds2
         self.assertEqual(ds3.count(), 20)
-        print(repr(ds3))
 
     def test_add_object(self):
         ds = DataSet(Data)
@@ -158,8 +157,7 @@ DataSet.getID(1)._add_obj(Data(id=6))
 DataSet.getID(1)._add_obj(Data(id=7))
 DataSet.getID(1)._add_obj(Data(id=8))
 DataSet.getID(1)._add_obj(Data(id=9))
-DataSet.getID(1)._add_obj(Data(id=10))
-'''
+DataSet.getID(1)._add_obj(Data(id=10))'''
         self.assertEqual(repr(ds), expected_reply)
 
     def test_str(self):
@@ -178,7 +176,6 @@ DataSet.getID(1)._add_obj(Data(id=10))
             8
             9
            10
-
 '''
         self.assertEqual(str(ds), expected_reply)
 

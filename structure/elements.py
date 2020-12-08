@@ -9,40 +9,49 @@ from structure.materials import *
 from structure.properties import *
 
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class Element(Data):
     _ids = set()
     _instances = set()
     _counter = 0
+    _command = 'ELEMENT'
+    _last_label_id = 0
 
-    def __init__(self, id: int, matID: int, propID: int, label: str = None):
+    def __init__(self, id: int, matID: int, propID: int, nodes: [int], label: str = None):
+        if not (isinstance(nodes, tuple) or isinstance(nodes, list)):
+            raise AttributeError(f'{type(self).__name__:s} ID {id:n} attribute nodes ({str(nodes)} '
+                                 f'must be either list or tuple of integers.')
+        elif False in [type(node) == int for node in nodes]:
+            raise ValueError(f'{type(self).__name__:s} ID {id:n} attribute nodes ({str(nodes)} '
+                             f'must be either list or tuple of integers.')
         self.mID = matID
         self.pID = propID
+        self.nodes = tuple(nodes)
         super(Element, self).__init__(id, label)
 
     def __del__(self):
-        # del self.mID
-        # del self.pID
         super(Element, self).__del__()
 
     def __str__(self):
-        message = f' {self.id:9n} {self.mID:9n} {self.pID:9n}'
+        message = f' {self.id:9n} {self.mID:9n} {self.pID:9n}  : '
+        for node in self.nodes:
+            message += f' {node:9n}'
         if self.label is not None:
             if ' ' in self.label:
-                message += f" '{self.label:s}'"
+                message += f"  :  '{self.label:s}'"
             else:
-                message += f' {self.label:s}'
+                message += f'  :  {self.label:s}'
         return message
 
     def __repr__(self):
+        message = f"{type(self).__name__:s}(id={self.id:n}, matID={self.mID:n}, " \
+                  f"propID={self.pID:n}, nodes={str(self.nodes):s}"
         if self.label is not None:
-            return f"{type(self).__name__:s}(id={self.id:n}, matID={self.mID:n}, " \
-                   f"propID={self.pID:n}, label='{self.label:s}')"
+            message += f", label='{self.label:s}')"
         else:
-            return f"{type(self).__name__:s}(id={self.id:n}, matID={self.mID:n}, " \
-                   f"propID={self.pID:n})"
+            message += f")"
 
     @property
     def prop(self):
@@ -51,6 +60,17 @@ class Element(Data):
     @property
     def mat(self):
         return Material.getID(self.mID)
+
+    def node(self, num: int):
+        """
+
+        :param num: Zero based index of Element node
+        :return:
+        """
+        if num not in self.nodes:
+            raise ValueError(f'{type(self).__name__:s} Node index {num:n} must be in range '
+                             f'0 - {len(self.nodes):n}.')
+        return Node2D.getID(self.nodes[num])
 
 
 class Rod2D(Element):
@@ -64,18 +84,14 @@ class Rod2D(Element):
     """
     _counter = 0
 
-    def __init__(self, id: int, matID: int, propID: int, endA: int, endB: int, label: str = None):
-        super(Rod2D, self).__init__(id, matID, propID, label)
-        self.endA = endA
-        self.endB = endB
+    def __init__(self, id: int, matID: int, propID: int, nodes: tuple, label: str = None):
+        super(Rod2D, self).__init__(id, matID, propID, nodes, label)
 
     def __del__(self):
-        # del self.endA
-        # del self.endB
         super(Rod2D, self).__del__()
 
     def __str__(self):
-        message = f' {self.id:9n} {self.mID:9n} {self.pID:9n} {self.endA:9n} {self.endB:9n}'
+        message = f' {self.id:9n} {self.mID:9n} {self.pID:9n} {self.nodes[0]:9n} {self.endB:9n}'
         if self.label is not None:
             if ' ' in self.label:
                 message += f" '{self.label:s}'"
@@ -211,7 +227,7 @@ class Bar2D(Rod2D):
     _counter = 0
 
     def __init__(self, id: int, matID: int, propID: int, endA: int, endB: int,
-                 releaseA: list = [0, 0, 0], releaseB: list = [0, 0, 0]):
+                 releaseA: tuple = (0, 0, 0), releaseB: tuple = (0, 0, 0)):
         """
         Bar 2D Element initialization
         :param id:       Unique Element ID
@@ -227,10 +243,6 @@ class Bar2D(Rod2D):
         self.rB = releaseB
 
     def __del__(self):
-        # self.rA = None
-        # self.rB = None
-        # del self.rA
-        # del self.rB
         super(Bar2D, self).__del__()
 
     def __str__(self):
@@ -346,64 +358,27 @@ class Bar2D(Rod2D):
         return mcl
 
 
-class Elements:
+class Elements(DataSet):
     """
     Class for collection of Element objects
     """
-    def __init__(self):
-        self.element = []   # Element objects
-        self.iid = {}       # dictionary of Element IDs {external ID: internal ID}
-        self.count = 0
+    _type = Element
+    _ids = set()
+    _instances = set()
+    _counter = 0
+    _command = 'ELEMENT'
+    _last_label_id = 0
 
-    def __str__(self):
-        elems_by_type = {}
-        for element in self.element:
-            if type(element).__name__ not in elems_by_type.keys():
-                elems_by_type.setdefault(type(element).__name__, [element])
-            else:
-                elems_by_type[type(element).__name__].append(element)
-        message = ''
-        for element_type in elems_by_type.keys():
-            message += '\n$ELEMENT TYPE = {0:s}'.format(element_type)
-            for element in elems_by_type[element_type]:
-                message += '\n' + str(element)
-            message += '\n'
-        return message
+    def __init__(self, id: int = None, label: str = None):
+        super(Elements, self).__init__(Element, id, label)
 
-    def __repr__(self):
-        return 'Elements: %d, minID = %d, maxID = %d' % self.stat()
-
-    def add_bar2D(self, id: int, matID: int, propID: int,
+    def add_Bar2D(self, id: int, matID: int, propID: int,
                   endA: int, endB: int, releaseA: list, releaseB: list):
-        self.element.append(Bar2D(id, matID, propID, endA, endB, releaseA, releaseB))
-        self.count += 1
-        self.iid.setdefault(id, self.count)
+        self._add_object(Bar2D(id, matID, propID, endA, endB, releaseA, releaseB))
 
-    def add_rod2D(self, id: int, matID: int, propID: int,
+    def add_Rod2D(self, id: int, matID: int, propID: int,
                   endA: int, endB: int):
-        self.element.append(Rod2D(id, matID, propID, endA, endB))
-        self.count += 1
-        self.iid.setdefault(id, self.count)
-
-    def stat(self):
-        return self.count, min(self.iid.keys()), max(self.iid.keys())
-
-    def check_duplicates(self):
-        logging.info(f'{self.__class__.__name__}.check()')
-        setOfIDs = set()
-        duplIDs = set()
-        for element in self.element:
-            if element.id in setOfIDs:
-                duplIDs.add(element.id)
-            else:
-                setOfIDs.add(element.id)
-        if len(duplIDs) > 0:
-            duplIDs = list(duplIDs)
-            tmp = '\n        '.join([''.join(['{0:10n}'.format(d) for d in duplIDs[i: i + 8]]) for i in range(0, len(duplIDs), 8)])
-            logging.error('Duplicate Element IDs found:\n{0}'.format(tmp))
-            raise IndexError('Duplicate Element IDs found.')
-        logging.info('Element IDs checked: OK')
-        return False
+        self._add_object(Rod2D(id, matID, propID, endA, endB))
 
 
 if __name__ == '__main__':

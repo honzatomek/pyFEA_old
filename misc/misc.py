@@ -223,6 +223,9 @@ class DataSet(Data):
                 objects_by_type[type(obj).__name__].append(obj)
         return objects_by_type
 
+    def _object_ids(self):
+        return sorted(self._im.keys())
+
     def __init__(self, obj_type: type = None, id: int = None, label: str = None):
         if id is None:
             id = type(self).next_free_id()
@@ -239,9 +242,9 @@ class DataSet(Data):
         self._im = {}  # mapping of ids
 
     def __repr__(self):
-        message = f"{type(self).__name__:s}(id={self.id:n}, label='{self.label:s}')\n"
+        message = f"{type(self).__name__:s}(id={self.id:n}, label='{self.label:s}')"
         for obj in self.objects:
-            message += f'{type(self).__name__:s}.getID({self.id:n})._add_obj({repr(obj):s})\n'
+            message += f'\n{type(self).__name__:s}.getID({self.id:n})._add_obj({repr(obj):s})'
         return message
 
     def __str__(self):
@@ -252,7 +255,7 @@ class DataSet(Data):
             for obj in objs_by_type[obj_type]:
                 message += str(obj) + '\n'
             message += '\n'
-        return message
+        return message[:-1]
 
     def __iter__(self):
         self.__n = 0
@@ -266,15 +269,20 @@ class DataSet(Data):
         else:
             raise StopIteration
 
+    def stat(self):
+        ids = self._im.keys()
+        return self.count(), min(ids), max(ids)
+
+    def stat_str(self):
+        return 'number: %9d    minID: %9d    maxID: %9d' % self.stat()
+
     def count(self):
         return len(self.objects)
 
     def get(self, identifier: (int, str)):
         if isinstance(identifier, int):
             return self.objects[self._im[identifier]]
-            # for obj in self.objects:
-            #     if obj.id == identifier:
-            #         return obj
+
         elif isinstance(identifier, str):
             for obj in self.objects:
                 if obj.label == identifier:
