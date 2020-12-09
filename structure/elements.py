@@ -35,14 +35,21 @@ class Element(Data):
         super(Element, self).__del__()
 
     def __str__(self):
-        message = f' {self.id:9n} {self.mID:9n} {self.pID:9n}        : '
+        message = f'  {self.id:9n} {self.mID:9n} {self.pID:9n}'
+        if len(self.nodes) > 0:
+            message += '  : '
+        #     message += '\n    & :    '
         for node in self.nodes:
+            # if (len(message) - message.rfind('\n')) >= 71:
+            #     message += '\n    &      '
             message += f' {node:9n}'
         if self.label is not None:
+            # if (len(message) - message.rfind('\n')) >= 71:
+            #     message += '\n& '
             if ' ' in self.label:
-                message += f"      :  '{self.label:s}'"
+                message += f" :  '{self.label:s}'"
             else:
-                message += f'      :  {self.label:s}'
+                message += f' :  {self.label:s}'
         return message
 
     def __repr__(self):
@@ -223,33 +230,46 @@ class Bar2D(Rod2D):
         :param releaseB: Element releases at end
         """
         super(Bar2D, self).__init__(id, matID, propID, nodes, label)
-        self.rA = releaseA
-        self.rB = releaseB
+        self.releases = [[bool(r) for r in releaseA], [bool(r) for r in releaseB]]
 
     def __del__(self):
         super(Bar2D, self).__del__()
 
-    # def __str__(self):
-    #     message = f' {self.id:9n} {self.mID:9n} {self.pID:9n} {self.endA:9n} {self.endB:9n}'
-    #     message += ''.join([f' {self.rA[i]:5n}' for i in range(len(self.rA))])
-    #     message += ''.join([f' {self.rB[i]:5n}' for i in range(len(self.rB))])
-    #     if self.label is not None:
-    #         if ' ' in self.label:
-    #             message += f" '{self.label:s}'"
-    #         else:
-    #             message += f' {self.label:s}'
-    #     return message
+    def __str__(self):
+        message = f'  {self.id:9n} {self.mID:9n} {self.pID:9n}'
 
-    # def __repr__(self):
-    #     message = f'{type(self).__name__:s}(id={self.id:n}, matID={self.mID:n}, ' \
-    #               f'propID={self.pID:n}, endA={self.endA:n}, endB={self.endB:n}'
-    #     message += f", releaseA=[{', '.join([str(d) for d in self.rA]):s}]"
-    #     message += f", releaseB=[{', '.join([str(d) for d in self.rB]):s}]"
-    #     if self.label is not None:
-    #         message += f", label='{self.label:s}')"
-    #     else:
-    #         message += ')'
-    #     return message
+        if len(self.nodes) > 0:
+            message += '  : '
+        for node in self.nodes:
+            message += f' {node:9n}'
+
+        dofs = ''
+        for release in self.releases:
+            for i, r in enumerate(release):
+                if r:
+                    dofs += str(i + 1)
+                else:
+                    dofs += '0'
+            dofs += ','
+        if len(dofs) > 0:
+            message += f'  :  {dofs[:-1]:7s}'
+
+        if self.label is not None:
+            if ' ' in self.label:
+                message += f" :  '{self.label:s}'"
+            else:
+                message += f' :  {self.label:s}'
+        return message
+
+    def __repr__(self):
+        message = f"{type(self).__name__:s}(id={self.id:n}, matID={self.mID:n}, " \
+                  f"propID={self.pID:n}, nodes={str(self.nodes):s}, " \
+                  f"releaseA={str(self.releases[0])}, releaseB={str(self.releases[1])}"
+        if self.label is not None:
+            message += f", label='{self.label:s}')"
+        else:
+            message += f")"
+        return message
 
     def stiffness_lcs(self):
         """
