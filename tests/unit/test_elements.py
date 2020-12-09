@@ -28,13 +28,15 @@ class Element_Test(unittest.TestCase):
         m = LinearElastic(1, 'steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
         p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
         els = Elements()
-        els.add_Bar2D(1, m.id, p.id, 1, 2,
+        els.add_Bar2D(1, m.id, p.id, (1, 2),
                       [0, 0, 0], [0, 0, 0])
-        els.add_Bar2D(2, m.id, p.id, 2, 3,
+        els.add_Bar2D(2, m.id, p.id, (2, 3),
                       [0, 0, 0], [0, 0, 0])
-        els.add_Rod2D(3, m.id, p.id, 3, 4)
+        els.add_Rod2D(3, m.id, p.id, (3, 4))
         self.assertTrue(Bar2D.instances() == 2)
         self.assertTrue(Rod2D.instances() == 1)
+        print(str(els))
+        print(repr(els))
 
 
 class Bar2D_Test(unittest.TestCase):

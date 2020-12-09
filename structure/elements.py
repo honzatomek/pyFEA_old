@@ -35,14 +35,14 @@ class Element(Data):
         super(Element, self).__del__()
 
     def __str__(self):
-        message = f' {self.id:9n} {self.mID:9n} {self.pID:9n}  : '
+        message = f' {self.id:9n} {self.mID:9n} {self.pID:9n}        : '
         for node in self.nodes:
             message += f' {node:9n}'
         if self.label is not None:
             if ' ' in self.label:
-                message += f"  :  '{self.label:s}'"
+                message += f"      :  '{self.label:s}'"
             else:
-                message += f'  :  {self.label:s}'
+                message += f'      :  {self.label:s}'
         return message
 
     def __repr__(self):
@@ -52,6 +52,7 @@ class Element(Data):
             message += f", label='{self.label:s}')"
         else:
             message += f")"
+        return message
 
     @property
     def prop(self):
@@ -84,37 +85,19 @@ class Rod2D(Element):
     """
     _counter = 0
 
-    def __init__(self, id: int, matID: int, propID: int, nodes: tuple, label: str = None):
+    def __init__(self, id: int, matID: int, propID: int, nodes: [int], label: str = None):
         super(Rod2D, self).__init__(id, matID, propID, nodes, label)
 
     def __del__(self):
         super(Rod2D, self).__del__()
 
-    def __str__(self):
-        message = f' {self.id:9n} {self.mID:9n} {self.pID:9n} {self.nodes[0]:9n} {self.endB:9n}'
-        if self.label is not None:
-            if ' ' in self.label:
-                message += f" '{self.label:s}'"
-            else:
-                message += f' {self.label:s}'
-        return message
-
-    def __repr__(self):
-        message = f'{type(self).__name__:s}(id={self.id:n}, matID={self.mID:n}, ' \
-                  f'propID={self.pID:n}, endA={self.endA:n}, endB={self.endB:n}'
-        if self.label is not None:
-            message += f", label='{self.label:s}')"
-        else:
-            message += ')'
-        return message
-
     @property
     def ndA(self):
-        return Node2D.getID(self.endA)
+        return Node2D.getID(self.nodes[0])
 
     @property
     def ndB(self):
-        return Node2D.getID(self.endB)
+        return Node2D.getID(self.nodes[1])
 
     def length(self):
         x1 = self.ndA.coor()
@@ -226,8 +209,9 @@ class Bar2D(Rod2D):
     """
     _counter = 0
 
-    def __init__(self, id: int, matID: int, propID: int, endA: int, endB: int,
-                 releaseA: tuple = (0, 0, 0), releaseB: tuple = (0, 0, 0)):
+    def __init__(self, id: int, matID: int, propID: int, nodes: [int],
+                 releaseA: tuple = (0, 0, 0), releaseB: tuple = (0, 0, 0),
+                 label: str = None):
         """
         Bar 2D Element initialization
         :param id:       Unique Element ID
@@ -238,34 +222,34 @@ class Bar2D(Rod2D):
         :param releaseA: Element releases at start
         :param releaseB: Element releases at end
         """
-        super(Bar2D, self).__init__(id, matID, propID, endA, endB)
+        super(Bar2D, self).__init__(id, matID, propID, nodes, label)
         self.rA = releaseA
         self.rB = releaseB
 
     def __del__(self):
         super(Bar2D, self).__del__()
 
-    def __str__(self):
-        message = f' {self.id:9n} {self.mID:9n} {self.pID:9n} {self.endA:9n} {self.endB:9n}'
-        message += ''.join([f' {self.rA[i]:5n}' for i in range(len(self.rA))])
-        message += ''.join([f' {self.rB[i]:5n}' for i in range(len(self.rB))])
-        if self.label is not None:
-            if ' ' in self.label:
-                message += f" '{self.label:s}'"
-            else:
-                message += f' {self.label:s}'
-        return message
+    # def __str__(self):
+    #     message = f' {self.id:9n} {self.mID:9n} {self.pID:9n} {self.endA:9n} {self.endB:9n}'
+    #     message += ''.join([f' {self.rA[i]:5n}' for i in range(len(self.rA))])
+    #     message += ''.join([f' {self.rB[i]:5n}' for i in range(len(self.rB))])
+    #     if self.label is not None:
+    #         if ' ' in self.label:
+    #             message += f" '{self.label:s}'"
+    #         else:
+    #             message += f' {self.label:s}'
+    #     return message
 
-    def __repr__(self):
-        message = f'{type(self).__name__:s}(id={self.id:n}, matID={self.mID:n}, ' \
-                  f'propID={self.pID:n}, endA={self.endA:n}, endB={self.endB:n}'
-        message += f", releaseA=[{', '.join([str(d) for d in self.rA]):s}]"
-        message += f", releaseB=[{', '.join([str(d) for d in self.rB]):s}]"
-        if self.label is not None:
-            message += f", label='{self.label:s}')"
-        else:
-            message += ')'
-        return message
+    # def __repr__(self):
+    #     message = f'{type(self).__name__:s}(id={self.id:n}, matID={self.mID:n}, ' \
+    #               f'propID={self.pID:n}, endA={self.endA:n}, endB={self.endB:n}'
+    #     message += f", releaseA=[{', '.join([str(d) for d in self.rA]):s}]"
+    #     message += f", releaseB=[{', '.join([str(d) for d in self.rB]):s}]"
+    #     if self.label is not None:
+    #         message += f", label='{self.label:s}')"
+    #     else:
+    #         message += ')'
+    #     return message
 
     def stiffness_lcs(self):
         """
@@ -373,12 +357,13 @@ class Elements(DataSet):
         super(Elements, self).__init__(Element, id, label)
 
     def add_Bar2D(self, id: int, matID: int, propID: int,
-                  endA: int, endB: int, releaseA: list, releaseB: list):
-        self._add_object(Bar2D(id, matID, propID, endA, endB, releaseA, releaseB))
+                  nodes: [int], releaseA: [int], releaseB: [int],
+                  label: str = None):
+        self._add_object(Bar2D(id, matID, propID, nodes, releaseA, releaseB, label))
 
     def add_Rod2D(self, id: int, matID: int, propID: int,
-                  endA: int, endB: int):
-        self._add_object(Rod2D(id, matID, propID, endA, endB))
+                  nodes: [int], label: str = None):
+        self._add_object(Rod2D(id, matID, propID, nodes, label))
 
 
 if __name__ == '__main__':
