@@ -219,16 +219,6 @@ class Bar2D(Rod2D):
     def __init__(self, id: int, matID: int, propID: int, nodes: [int],
                  releaseA: tuple = (0, 0, 0), releaseB: tuple = (0, 0, 0),
                  label: str = None):
-        """
-        Bar 2D Element initialization
-        :param id:       Unique Element ID
-        :param material: Material Object
-        :param property: Property Object
-        :param endA:     Node2D object of element start
-        :param endB:     Node2D object of element end
-        :param releaseA: Element releases at start
-        :param releaseB: Element releases at end
-        """
         super(Bar2D, self).__init__(id, matID, propID, nodes, label)
         self.releases = [[bool(r) for r in releaseA], [bool(r) for r in releaseB]]
 

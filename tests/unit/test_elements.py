@@ -35,8 +35,8 @@ class Element_Test(unittest.TestCase):
         els.add_Rod2D(3, m.id, p.id, (3, 4))
         self.assertTrue(Bar2D.instances() == 2)
         self.assertTrue(Rod2D.instances() == 1)
-        print(str(els))
-        print(repr(els))
+        # print(str(els))
+        # print(repr(els))
 
 
 class Bar2D_Test(unittest.TestCase):
@@ -48,7 +48,7 @@ class Bar2D_Test(unittest.TestCase):
         p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
         els = Elements()
         for i in range(10):
-            els.add_Bar2D(i + 1, m.id, p.id, i + 1, i + 2,
+            els.add_Bar2D(i + 1, m.id, p.id, (i + 1, i + 2),
                           [0, 0, 0], [0, 0, 0])
         for i in range(10):
             ke = els.get(i + 1).stiffness_gcs()
@@ -65,7 +65,7 @@ class Bar2D_Test(unittest.TestCase):
         p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
         els = Elements()
         for i in range(10):
-            els.add_Bar2D(i + 1, m.id, p.id, i + 1, i + 2,
+            els.add_Bar2D(i + 1, m.id, p.id, (i + 1, i + 2),
                           [0, 0, 0], [0, 0, 0])
         mi = {'Lumped': 1., 'Consistent': 0., 'Lumped-Consistent': 0.5}
         for i in range(10):
@@ -87,10 +87,14 @@ class Bar2D_Test(unittest.TestCase):
                 self.assertAlmostEqual(wa @ me @ wa.T, mass,
                                        msg=f'{mass_type} Mass Matrix of element {i + 1}'
                                            f' must conserve linear momentum in z direction.')
+                uwa = np.array([1., 1., 0., 1., 1., 0.]) * math.sqrt(2.) / 2
+                self.assertAlmostEqual(uwa @ me @ uwa.T, mass,
+                                       msg=f'{mass_type} Mass Matrix of element {i + 1}'
+                                           f' must conserve linear momentum in x + z direction.')
                 # physical symmetry
                 el1 = els.get(i + 1)
                 me1 = mi[mass_type] * el1.mass_lumped_lcs() + (1. - mi[mass_type]) * el1.mass_consistent_lcs()
-                el2 = Bar2D(100001 + i + 100 * j, el1.mID, el1.pID, el1.endB, el1.endA, el1.rB, el1.rA)
+                el2 = Bar2D(100001 + i + 100 * j, el1.mID, el1.pID, el1.nodes, el1.releases[0], el1.releases[1])
                 me2 = mi[mass_type] * el2.mass_lumped_lcs() + (1. - mi[mass_type]) * el2.mass_consistent_lcs()
                 self.assertTrue((me1 == me2).all(),
                                 msg=f'{mass_type} Mass matrix of element nd1->nd2 must be same as of element nd2->nd1')
@@ -105,7 +109,7 @@ class Rod2D_Test(unittest.TestCase):
         p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
         els = Elements()
         for i in range(10):
-            els.add_Rod2D(i + 1, m.id, p.id, i + 1, i + 2)
+            els.add_Rod2D(i + 1, m.id, p.id, (i + 1, i + 2))
         for i in range(10):
             ke = els.get(i + 1).stiffness_gcs()
             self.assertTrue((ke == ke.T).all(),
@@ -121,7 +125,7 @@ class Rod2D_Test(unittest.TestCase):
         p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
         els = Elements()
         for i in range(10):
-            els.add_Rod2D(i + 1, m.id, p.id, i + 1, i + 2)
+            els.add_Rod2D(i + 1, m.id, p.id, (i + 1, i + 2))
         mi = {'Lumped': 1., 'Consistent': 0., 'Lumped-Consistent': 0.5}
         for i in range(10):
             for j, mass_type in enumerate(mi.keys()):
@@ -140,7 +144,7 @@ class Rod2D_Test(unittest.TestCase):
                 # physical symmetry
                 el1 = els.get(i + 1)
                 me1 = mi[mass_type] * el1.mass_lumped_lcs() + (1. - mi[mass_type]) * el1.mass_consistent_lcs()
-                el2 = Rod2D(100001 + i + 100 * j, el1.mID, el1.pID, el1.endB, el1.endA)
+                el2 = Rod2D(100001 + i + 100 * j, el1.mID, el1.pID, el1.nodes)
                 me2 = mi[mass_type] * el2.mass_lumped_lcs() + (1. - mi[mass_type]) * el2.mass_consistent_lcs()
                 self.assertTrue((me1 == me2).all(),
                                 msg=f'{mass_type} Mass matrix of element nd1->nd2 must be same as of element nd2->nd1')
