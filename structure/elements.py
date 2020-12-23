@@ -140,7 +140,7 @@ class Rod2D(Element):
         :return: kl - element stiffness matrix in LCS
         """
         l = self.length()
-        EA = self.mat.E * self.prop.A
+        EA = self.mat.E() * self.prop.A
         kuu = EA / l * np.array([[1., -1.],
                                  [-1., 1.]], dtype=float)
 
@@ -169,7 +169,7 @@ class Rod2D(Element):
         :return: mll - Rod element lumped mass matrix in LCS 2D (6, 6)
         """
         # structural mass
-        sm = self.mat.ro * self.prop.A * self.length()
+        sm = self.mat.ro() * self.prop.A * self.length()
         # nonstructural mass
         nm = self.length() * self.prop.nsm
         # local lumped element mass matrix
@@ -184,7 +184,7 @@ class Rod2D(Element):
         :return: mcl - Rod2D element lumped mass matrix in LCS 2D (6, 6)
         """
         # structural mass
-        sm = self.mat.ro * self.prop.A * self.length()
+        sm = self.mat.ro() * self.prop.A * self.length()
         # nonstructural mass
         nm = self.length() * self.prop.nsm
         # local consistent element mass matrix
@@ -235,11 +235,7 @@ class Bar2D(Rod2D):
 
         dofs = ''
         for release in self.releases:
-            for i, r in enumerate(release):
-                if r:
-                    dofs += str(i + 1)
-                else:
-                    dofs += '0'
+            dofs += ''.join([str(i + 1) for i in range(len(release)) if release[i]])
             dofs += ','
         if len(dofs) > 0:
             message += f'  :  {dofs[:-1]:7s}'
@@ -269,8 +265,8 @@ class Bar2D(Rod2D):
         l = self.length()
         l2 = l * l
         l3 = l2 * l
-        EA = self.mat.E * self.prop.A
-        EI = self.mat.E * self.prop.Iyy
+        EA = self.mat.E() * self.prop.A
+        EI = self.mat.E() * self.prop.Iyy
         kuu = EA / l * np.array([[1., -1.],
                                  [-1., 1.]], dtype=float)
         kww = EI / l3 * np.array([[12., -12.],
@@ -295,7 +291,7 @@ class Bar2D(Rod2D):
         :return: mll - bar element lumped mass matrix in LCS 2D (6, 6)
         """
         # structural mass
-        sm = self.prop.A * self.length() * self.mat.ro
+        sm = self.prop.A * self.length() * self.mat.ro()
         # nonstructural mass
         nm = self.length() * self.prop.nsm
         # local lumped element mass matrix
@@ -310,7 +306,7 @@ class Bar2D(Rod2D):
         :return: mcl - bar element lumped mass matrix in LCS 2D (6, 6)
         """
         # structural mass
-        sm = self.prop.A * self.length() * self.mat.ro
+        sm = self.prop.A * self.length() * self.mat.ro()
         # nonstructural mass
         nm = self.length() * self.prop.nsm
         # local consistent element mass matrix
@@ -329,7 +325,7 @@ class Bar2D(Rod2D):
         :return: mcl - beam element lumped mass matrix in LCS 2D (6, 6)
         """
         # structural mass
-        sm = self.prop.A * self.length() * self.mat.ro
+        sm = self.prop.A * self.length() * self.mat.ro()
         # nonstructural mass
         nm = self.length() * self.prop.nsm
         # local consistent element mass matrix

@@ -112,8 +112,10 @@ class Rod2D_Test(unittest.TestCase):
             els.add_Rod2D(i + 1, m.id, p.id, (i + 1, i + 2))
         for i in range(10):
             ke = els.get(i + 1).stiffness_gcs()
+            # numerical symmetry
             self.assertTrue((ke == ke.T).all(),
                             msg=f'Stiffness Matrix of Element {i + 1} must be symmetric.')
+            # positive definiteness
             self.assertTrue(np.linalg.det(ke) == 0.,
                             msg=f'Stiffness matrix of element {i + 1} must be positive definite.')
 
