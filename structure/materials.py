@@ -81,9 +81,9 @@ class LinearElastic(Material):
 
     def __repr__(self):
         return f"{type(self).__name__:s}(id={self.id:n}, label='{self.label:s}', " \
-               f"density={self._ro:s}, youngs_modulus={self._E:s}, " \
-               f"poissons_ratio={self._nu:s}, " \
-               f"thermal_expansion_coefficient={self._alpha:s})"
+               f"density={eng(self._ro):s}, youngs_modulus={eng(self._E):s}, " \
+               f"poissons_ratio={eng(self._nu):s}, " \
+               f"thermal_expansion_coefficient={eng(self._alpha):s})"
 
     def __str__(self):
         retval = super(LinearElastic, self).__str__().split('\n')
