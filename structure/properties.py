@@ -1,4 +1,4 @@
-from misc.misc import Data, format_eng
+from misc.misc import Data, eng
 
 
 class Property(Data):
@@ -48,17 +48,17 @@ class CrossSectionBeam2D(Property):
         message = super(CrossSectionBeam2D, self).__str__().split('\n')
         end = message[-1]
         message = message[:-1]
-        message.extend(['  $GEOMETRY', f'    {format_eng(self.A):s} {format_eng(self.Iyy):s}'
-                                       f' {format_eng(self.Wyy):s} {format_eng(self.Ash):s}'])
-        message.extend(['  $MASS', f'    {format_eng(self.nsm):s}'])
+        message.extend(['  $GEOMETRY', f'    {eng(self.A):s} {eng(self.Iyy):s}'
+                                       f' {eng(self.Wyy):s} {eng(self.Ash):s}'])
+        message.extend(['  $MASS', f'    {eng(self.nsm):s}'])
         message.append(end)
         return '\n' + '\n'.join(message)
 
     def __repr__(self):
         message = f"{type(self).__name__:s}(id={self.id:n}, label='{self.label:s}'" \
-                  f", A={format_eng(self.A):s}" \
-                  f", Iyy={format_eng(self.Iyy):s}" \
-                  f", Wyy={format_eng(self.Wyy):s}" \
-                  f", Ash={format_eng(self.Ash):s}" \
-                  f", nsm={format_eng(self.nsm):s})"
+                  f", A={eng(self.A):s}" \
+                  f", Iyy={eng(self.Iyy):s}" \
+                  f", Wyy={eng(self.Wyy):s}" \
+                  f", Ash={eng(self.Ash):s}" \
+                  f", nsm={eng(self.nsm):s})"
         return message

@@ -1,6 +1,6 @@
 import math
 import logging
-from misc.misc import format_eng, Data, DataSet
+from misc.misc import eng, Data, DataSet
 from misc.errors import *
 
 
@@ -59,14 +59,14 @@ class Node2D(Data):
 
     def __repr__(self):
         if self.label is not None:
-            return f"{type(self).__name__}(id={self.id:n}, x={format_eng(self.x).strip():s}," \
-                   f" z={format_eng(self.z).strip():s}, label='{self.label:s}')"
+            return f"{type(self).__name__}(id={self.id:n}, x={eng(self.x).strip():s}," \
+                   f" z={eng(self.z).strip():s}, label='{self.label:s}')"
         else:
-            return f'{type(self).__name__}(id={self.id:n}, x={format_eng(self.x):s},' \
-                   f' z={format_eng(self.z):s})'
+            return f'{type(self).__name__}(id={self.id:n}, x={eng(self.x):s},' \
+                   f' z={eng(self.z):s})'
 
     def __str__(self):
-        message = f' {self.id:9n} {format_eng(self.x):s} {format_eng(self.z):s}'
+        message = f' {self.id:9n} {eng(self.x):s} {eng(self.z):s}'
         if self.label is not None:
             if ' ' in self.label:
                 message += f"  : '{self.label:s}'"

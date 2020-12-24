@@ -6,10 +6,17 @@ from misc.misc import *
 
 
 class HelpFunctions(unittest.TestCase):
-    def test_format_eng_default(self):
+    def test_eng_default(self):
         vals = [random.random() * 10. ** random.uniform(-5.0, 5.0) for i in range(100)]
         for val in vals:
-            self.assertTrue(abs((float(format_eng(val)) - val) / val) < 0.001)
+            self.assertTrue(abs((float(eng(val)) - val) / val) < 0.001)
+
+    def test_eng_list(self):
+        vals = [[[1., 2., 3.], [4., 5., 6.]], [[7., 8., 9.], [10., 11., 12.]], 13.]
+        print(eng(vals, oneline=True))
+        vals = [[1., 2., 3.], [4., 5., 6.], [7., 8., 9.], [10., 11., 12.], 13.]
+        print(eng(vals, oneline=True))
+        print(eng(vals, oneline=False))
 
 
 class TestData(unittest.TestCase):

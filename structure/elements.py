@@ -2,7 +2,7 @@ import math
 import logging
 import numpy as np
 
-from misc.misc import format_eng, Data
+from misc.misc import eng, Data
 from misc.errors import *
 from structure.nodes import *
 from structure.materials import *

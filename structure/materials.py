@@ -1,4 +1,4 @@
-from misc.misc import format_eng, Data, DataSet
+from misc.misc import eng, Data, DataSet
 import numpy as np
 
 
@@ -90,13 +90,13 @@ class LinearElastic(Material):
         end = retval[-1]
         retval = retval[:-1]
         retval.append('  $DENSITY')
-        retval.append(f'    {format_eng(self.ro):s}')
+        retval.append(f'    {eng(self.ro):s}')
         retval.append('  $YOUNG')
-        retval.append(f'    {format_eng(self.E):s}')
+        retval.append(f'    {eng(self.E):s}')
         retval.append('  $POISSON')
-        retval.append(f'    {format_eng(self.nu):s}')
+        retval.append(f'    {eng(self.nu):s}')
         retval.append('  $THERMEXP')
-        retval.append(f'    {format_eng(self.a):s}')
+        retval.append(f'    {eng(self.a):s}')
         retval.append(end)
         return '\n'.join(retval)
 
