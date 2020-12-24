@@ -73,13 +73,13 @@ def format_eng(value: float, format_spec: str = ' {0:10.4f}E{1:+03n}'):
         return format_spec.format(mantissa, exponent)
     except OverflowError as e:
         logger.exception(e)
-        return str('{0:' + str(len(eng(1.1, format_spec))) + 'n}').format(np.infty)
+        return str('{0:' + str(len(format_eng(1.1, format_spec))) + 'n}').format(np.infty)
     except ValueError as e:
         logger.exception(e)
-        return str('{0:' + str(len(eng(1.1, format_spec))) + 'n}').format(np.nan)
+        return str('{0:' + str(len(format_eng(1.1, format_spec))) + 'n}').format(np.nan)
     except TypeError as e:
         logger.exception(e)
-        return str('{0:' + str(len(eng(1.1, format_spec))) + 'n}').format(np.nan)
+        return str('{0:' + str(len(format_eng(1.1, format_spec))) + 'n}').format(np.nan)
 
 
 
