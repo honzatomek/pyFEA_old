@@ -26,7 +26,7 @@ def eng(value, format_spec: str = ' {0:10.4f}E{1:+03n}', oneline: bool = True):
     elif isinstance(value, np.float) or isinstance(value, np.int):
         return format_eng(value, format_spec)
     elif isinstance(value, list) or isinstance(value, np.ndarray):
-        # check if max dimension is 2
+        # check if max dimension is 2 for oneline = False
         if not oneline:
             for r in value:
                 if isinstance(r, list) or isinstance(r, np.ndarray):

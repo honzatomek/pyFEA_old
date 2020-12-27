@@ -78,7 +78,7 @@ class Bar2D_Test(unittest.TestCase):
                 self.assertTrue(np.linalg.det(me) >= 0.,
                                 msg=f'{mass_type} Mass matrix of element {i + 1} must be positive semi-definite.')
                 # check linear momentum
-                mass = els.get(i + 1).length() * (els.get(i + 1).mat.ro * els.get(i + 1).prop.A + els.get(i + 1).prop.nsm)
+                mass = els.get(i + 1).length() * (els.get(i + 1).mat.ro() * els.get(i + 1).prop.A + els.get(i + 1).prop.nsm)
                 ua = np.array([1., 0., 0., 1., 0., 0.])
                 self.assertAlmostEqual(ua @ me @ ua.T, mass,
                                        msg=f'{mass_type} Mass Matrix of element {i + 1} '
@@ -139,7 +139,7 @@ class Rod2D_Test(unittest.TestCase):
                 self.assertTrue(np.linalg.det(me) >= 0.,
                                 msg=f'{mass_type} Mass matrix of element {i + 1} must be positive semi-definite.')
                 # check linear momentum
-                mass = els.get(i + 1).length() * (els.get(i + 1).mat.ro * els.get(i + 1).prop.A + els.get(i + 1).prop.nsm)
+                mass = els.get(i + 1).length() * (els.get(i + 1).mat.ro() * els.get(i + 1).prop.A + els.get(i + 1).prop.nsm)
                 ua = np.array([1., 0., 0., 1., 0., 0.])
                 self.assertAlmostEqual(ua @ me @ ua.T, mass,
                                        msg=f'{mass_type} Mass Matrix of element {i + 1} must conserve linear momentum in x direction.')

@@ -21,7 +21,7 @@ class LinearElastic(Material):
 
     @staticmethod
     def temperature_dependent(array: np.ndarray, temperature: float = 0.0):
-        if array.shape[0] == 1:
+        if array.shape[0] < 2:
             return array[0, 0]
         else:
             return np.interp(temperature, array[:, 0], array[:, 1])
@@ -33,13 +33,13 @@ class LinearElastic(Material):
             return value
         # process float
         elif isinstance(value, float):
-            return np.array([0.0, value], dtype=float)
+            return np.array([[0.0, value]], dtype=float)
         # process array
         elif isinstance(value, list):
             return np.array(value, dtype=float)
         # process rest
         else:
-            return np.array([0.0, float(value)], dtype=float)
+            return np.array([[0.0, float(value)]], dtype=float)
 
     def __init__(self, id: int, label: str, density: np.array, youngs_modulus: np.array,
                  poissons_ratio: np.array, thermal_expansion_coefficient: np.array):

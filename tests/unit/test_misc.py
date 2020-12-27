@@ -12,11 +12,18 @@ class HelpFunctions(unittest.TestCase):
             self.assertTrue(abs((float(eng(val)) - val) / val) < 0.001)
 
     def test_eng_list(self):
-        vals = [[[1., 2., 3.], [4., 5., 6.]], [[7., 8., 9.], [10., 11., 12.]], 13.]
-        print(eng(vals, oneline=True))
-        vals = [[1., 2., 3.], [4., 5., 6.], [7., 8., 9.], [10., 11., 12.], 13.]
-        print(eng(vals, oneline=True))
-        print(eng(vals, oneline=False))
+        reply = '[[[ 1.0000E+00, 2.0000E+00, 3.0000E+00], [ 4.0000E+00, 5.0000E+00, 6.0000E+00]], [[ 7.0000E+00, 8.0000E+00, 9.0000E+00], [ 10.0000E+00, 11.0000E+00, 12.0000E+00]], 13.0000E+00]'
+        vals = eval(reply)
+        self.assertEqual(eng(vals, oneline=True), reply)
+        reply = '[[ 1.0000E+00, 2.0000E+00, 3.0000E+00], [ 4.0000E+00, 5.0000E+00, 6.0000E+00], [ 7.0000E+00, 8.0000E+00, 9.0000E+00], [ 10.0000E+00, 11.0000E+00, 12.0000E+00], 13.0000E+00]'
+        vals = eval(reply)
+        self.assertEqual(eng(vals, oneline=True), reply)
+        reply = '''     1.0000E+00     2.0000E+00     3.0000E+00
+     4.0000E+00     5.0000E+00     6.0000E+00
+     7.0000E+00     8.0000E+00     9.0000E+00
+    10.0000E+00    11.0000E+00    12.0000E+00
+    13.0000E+00'''
+        self.assertEqual(eng(vals, oneline=False), reply)
 
 
 class TestData(unittest.TestCase):
