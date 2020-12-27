@@ -82,9 +82,6 @@ def format_eng(value: float, format_spec: str = ' {0:10.4f}E{1:+03n}'):
         return str('{0:' + str(len(format_eng(1.1, format_spec))) + 'n}').format(np.nan)
 
 
-
-
-
 def timer(f):
     @wraps
     def wrap(*args, **kwargs):

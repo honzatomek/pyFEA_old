@@ -19,14 +19,14 @@ class Element(Data):
     _command = 'ELEMENT'
     _last_label_id = 0
 
-    def __init__(self, id: int, matID: int, propID: int, nodes: [int], label: str = None):
+    def __init__(self, id: int, mat: str, propID: int, nodes: [int], label: str = None):
         if not (isinstance(nodes, tuple) or isinstance(nodes, list)):
             raise AttributeError(f'{type(self).__name__:s} ID {id:n} attribute nodes ({str(nodes)} '
                                  f'must be either list or tuple of integers.')
         elif False in [type(node) == int for node in nodes]:
             raise ValueError(f'{type(self).__name__:s} ID {id:n} attribute nodes ({str(nodes)} '
                              f'must be either list or tuple of integers.')
-        self.mID = matID
+        self._mat = mat
         self.pID = propID
         self.nodes = tuple(nodes)
         super(Element, self).__init__(id, label)
@@ -35,7 +35,7 @@ class Element(Data):
         super(Element, self).__del__()
 
     def __str__(self):
-        message = f'  {self.id:9n} {self.mID:9n} {self.pID:9n}'
+        message = f'  {self.id:9n} {self._mat:15s} {self.pID:9n}'
         if len(self.nodes) > 0:
             message += '  : '
         #     message += '\n    & :    '
@@ -53,7 +53,7 @@ class Element(Data):
         return message
 
     def __repr__(self):
-        message = f"{type(self).__name__:s}(id={self.id:n}, matID={self.mID:n}, " \
+        message = f"{type(self).__name__:s}(id={self.id:n}, mat={self._mat:s}, " \
                   f"propID={self.pID:n}, nodes={str(self.nodes):s}"
         if self.label is not None:
             message += f", label='{self.label:s}')"
@@ -67,7 +67,7 @@ class Element(Data):
 
     @property
     def mat(self):
-        return Material.getID(self.mID)
+        return Material.getLabel(self._mat)
 
     def node(self, num: int):
         """
@@ -92,8 +92,8 @@ class Rod2D(Element):
     """
     _counter = 0
 
-    def __init__(self, id: int, matID: int, propID: int, nodes: [int], label: str = None):
-        super(Rod2D, self).__init__(id, matID, propID, nodes, label)
+    def __init__(self, id: int, mat: str, propID: int, nodes: [int], label: str = None):
+        super(Rod2D, self).__init__(id, mat, propID, nodes, label)
 
     def __del__(self):
         super(Rod2D, self).__del__()
@@ -216,17 +216,17 @@ class Bar2D(Rod2D):
     """
     _counter = 0
 
-    def __init__(self, id: int, matID: int, propID: int, nodes: [int],
+    def __init__(self, id: int, mat: str, propID: int, nodes: [int],
                  releaseA: tuple = (0, 0, 0), releaseB: tuple = (0, 0, 0),
                  label: str = None):
-        super(Bar2D, self).__init__(id, matID, propID, nodes, label)
+        super(Bar2D, self).__init__(id, mat, propID, nodes, label)
         self.releases = [[bool(r) for r in releaseA], [bool(r) for r in releaseB]]
 
     def __del__(self):
         super(Bar2D, self).__del__()
 
     def __str__(self):
-        message = f'  {self.id:9n} {self.mID:9n} {self.pID:9n}'
+        message = f'  {self.id:9n} {self._mat:9n} {self.pID:9n}'
 
         if len(self.nodes) > 0:
             message += '  : '
@@ -248,7 +248,7 @@ class Bar2D(Rod2D):
         return message
 
     def __repr__(self):
-        message = f"{type(self).__name__:s}(id={self.id:n}, matID={self.mID:n}, " \
+        message = f"{type(self).__name__:s}(id={self.id:n}, mat={self._mat:s}, " \
                   f"propID={self.pID:n}, nodes={str(self.nodes):s}, " \
                   f"releaseA={str(self.releases[0])}, releaseB={str(self.releases[1])}"
         if self.label is not None:
@@ -362,14 +362,14 @@ class Elements(DataSet):
     def __init__(self, id: int = None, label: str = None):
         super(Elements, self).__init__(Element, id, label)
 
-    def add_Bar2D(self, id: int, matID: int, propID: int,
+    def add_Bar2D(self, id: int, mat: str, propID: int,
                   nodes: [int], releaseA: [int], releaseB: [int],
                   label: str = None):
-        self._add_object(Bar2D(id, matID, propID, nodes, releaseA, releaseB, label))
+        self._add_object(Bar2D(id, mat, propID, nodes, releaseA, releaseB, label))
 
-    def add_Rod2D(self, id: int, matID: int, propID: int,
+    def add_Rod2D(self, id: int, mat: str, propID: int,
                   nodes: [int], label: str = None):
-        self._add_object(Rod2D(id, matID, propID, nodes, label))
+        self._add_object(Rod2D(id, mat, propID, nodes, label))
 
 
 if __name__ == '__main__':
@@ -377,14 +377,14 @@ if __name__ == '__main__':
     for i in range(3):
         nds.add(i + 1, i * 500., 0.)
     print(str(nds))
-    m = LinearElastic(1, 'steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
+    m = LinearElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
     print(str(m))
     p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
     print(str(p))
     els = Elements()
     for i in range(2):
-        els.add_rod2D(i + 101, m.id, p.id, i + 1, i + 2)
-        els.add_bar2D(i + 1, m.id, p.id, i + 1, i + 2,
+        els.add_Rod2D(m.label, p.id, i + 1, i + 2)
+        els.add_Bar2D(m.label, p.id, i + 1, i + 2,
                       [0, 0, 0], [0, 0, 0])
     print(str(els))
     pass

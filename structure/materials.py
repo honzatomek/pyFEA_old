@@ -1,4 +1,5 @@
 from misc.misc import eng, Data, DataSet
+from misc.errors import DuplicateIDError, DuplicateLabelError
 import numpy as np
 
 
@@ -9,8 +10,10 @@ class Material(Data):
     _command = 'MATERIAL'
     _last_label_id = 0
 
-    def __init__(self, id: int, label: str):
-        super(Material, self).__init__(id, label)
+    def __init__(self, label: str):
+        if self.label_exists(label):
+            raise DuplicateLabelError(f'Duplicate {type(self).__name__:s} label: {label:s}.')
+        super(Material, self).__init__(label=label)
 
     def __del__(self):
         super(Material, self).__del__()
@@ -41,7 +44,7 @@ class LinearElastic(Material):
         else:
             return np.array([[0.0, float(value)]], dtype=float)
 
-    def __init__(self, id: int, label: str, density: np.array, youngs_modulus: np.array,
+    def __init__(self, label: str, density: np.array, youngs_modulus: np.array,
                  poissons_ratio: np.array, thermal_expansion_coefficient: np.array):
         """
         init method for LinearElasticMaterial, could be temperature dependent
@@ -59,7 +62,7 @@ class LinearElastic(Material):
         self._E = self.convert_to_ndarray(youngs_modulus)
         self._nu = self.convert_to_ndarray(poissons_ratio)
         self._alpha = self.convert_to_ndarray(thermal_expansion_coefficient)
-        super(LinearElastic, self).__init__(id, label)
+        super(LinearElastic, self).__init__(label=label)
 
     def ro(self, temperature: float = 0.0):
         return self.temperature_dependent(self._ro, temperature)
@@ -73,14 +76,14 @@ class LinearElastic(Material):
     def G(self, temperature: float = 0.0):
         return self.E(temperature) / (2. * (1. + self.nu(temperature)))
 
-    def a(self, temperature: float = 0.0):
+    def alpha(self, temperature: float = 0.0):
         return self.temperature_dependent(self._alpha, temperature)
 
     def __del__(self):
         super(LinearElastic, self).__del__()
 
     def __repr__(self):
-        return f"{type(self).__name__:s}(id={self.id:n}, label='{self.label:s}', " \
+        return f"{type(self).__name__:s}(label='{self.label:s}', " \
                f"density={eng(self._ro):s}, youngs_modulus={eng(self._E):s}, " \
                f"poissons_ratio={eng(self._nu):s}, " \
                f"thermal_expansion_coefficient={eng(self._alpha):s})"
@@ -96,7 +99,7 @@ class LinearElastic(Material):
         retval.append('  $POISSON')
         retval.append(f'    {eng(self.nu):s}')
         retval.append('  $THERMEXP')
-        retval.append(f'    {eng(self.a):s}')
+        retval.append(f'    {eng(self.alpha):s}')
         retval.append(end)
         return '\n'.join(retval)
 
