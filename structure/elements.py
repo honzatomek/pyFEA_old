@@ -19,42 +19,50 @@ class Element(Data):
     _command = 'ELEMENT'
     _last_label_id = 0
 
-    def __init__(self, id: int, mat: str, propID: int, nodes: [int], label: str = None):
+    def __init__(self, id: int, mat: str, prop: str, nodes: [int], label: str = None):
         if not (isinstance(nodes, tuple) or isinstance(nodes, list)):
             raise AttributeError(f'{type(self).__name__:s} ID {id:n} attribute nodes ({str(nodes)} '
                                  f'must be either list or tuple of integers.')
         elif False in [type(node) == int for node in nodes]:
             raise ValueError(f'{type(self).__name__:s} ID {id:n} attribute nodes ({str(nodes)} '
-                             f'must be either list or tuple of integers.')
-        self._mat = mat
-        self.pID = propID
-        self.nodes = tuple(nodes)
+                             f'must be either list or tuple of integers, not {type(nodes).__name__:s}.')
+
+        if isinstance(mat, int):
+            self._mat = Material.getID(mat).label
+        else:
+            self._mat = mat
+
+        if isinstance(prop, int):
+            self._prop = Property.getID(prop).label
+        else:
+            self._prop = prop
+
+        self._nodes = nodes
         super(Element, self).__init__(id, label)
 
     def __del__(self):
         super(Element, self).__del__()
 
     def __str__(self):
-        message = f'  {self.id:9n} {self._mat:15s} {self.pID:9n}'
-        if len(self.nodes) > 0:
+        message = f'  {self.id:9n} {self._mat:16s} {self._prop:16s}'
+
+        if len(self._nodes) > 0:
             message += '  : '
-        #     message += '\n    & :    '
-        for node in self.nodes:
-            # if (len(message) - message.rfind('\n')) >= 71:
-            #     message += '\n    &      '
+
+        for node in self._nodes:
             message += f' {node:9n}'
+
         if self.label is not None:
-            # if (len(message) - message.rfind('\n')) >= 71:
-            #     message += '\n& '
             if ' ' in self.label:
                 message += f" :  '{self.label:s}'"
             else:
                 message += f' :  {self.label:s}'
+
         return message
 
     def __repr__(self):
         message = f"{type(self).__name__:s}(id={self.id:n}, mat={self._mat:s}, " \
-                  f"propID={self.pID:n}, nodes={str(self.nodes):s}"
+                  f"prop={self._prop:s}, nodes={str(self._nodes):s}"
         if self.label is not None:
             message += f", label='{self.label:s}')"
         else:
@@ -63,11 +71,19 @@ class Element(Data):
 
     @property
     def prop(self):
-        return Property.getID(self.pID)
+        return Property.getLabel(self._prop)
 
     @property
     def mat(self):
         return Material.getLabel(self._mat)
+
+    @property
+    def nodes(self):
+        return [Node.getID(node) for node in self._nodes]
+
+    @property
+    def node_ids(self):
+        return list(self._nodes)
 
     def node(self, num: int):
         """
@@ -75,40 +91,33 @@ class Element(Data):
         :param num: Zero based index of Element node
         :return:
         """
-        if num not in self.nodes:
+        if num < 0 or num >= len(self._nodes):
             raise ValueError(f'{type(self).__name__:s} Node index {num:n} must be in range '
-                             f'0 - {len(self.nodes):n}.')
-        return Node2D.getID(self.nodes[num])
+                             f'0 - {len(self._nodes):n}.')
+        return Node.getID(self._nodes[num])
 
 
 class Rod2D(Element):
     """
     Linear Rod Element in 2D
     :param id:       Unique Element ID
-    :param matID:    Material Object
-    :param propID:   Property Object
-    :param endA:     Node2D object of element start
-    :param endB:     Node2D object of element end
+    :param mat:      Material Object label
+    :param prop:     Property Object label
+    :param endA:     Node object of element start
+    :param endB:     Node object of element end
     """
     _counter = 0
 
-    def __init__(self, id: int, mat: str, propID: int, nodes: [int], label: str = None):
-        super(Rod2D, self).__init__(id, mat, propID, nodes, label)
+    def __init__(self, id: int, mat: str, prop: str, nodes: [int], label: str = None):
+        super(Rod2D, self).__init__(id, mat, prop, nodes, label)
 
     def __del__(self):
         super(Rod2D, self).__del__()
 
-    @property
-    def ndA(self):
-        return Node2D.getID(self.nodes[0])
-
-    @property
-    def ndB(self):
-        return Node2D.getID(self.nodes[1])
-
     def length(self):
-        x1 = self.ndA.coor()
-        x2 = self.ndB.coor()
+        nds = self.nodes
+        x1 = nds[0].coor
+        x2 = nds[1].coor
         length = math.sqrt((x2[0] - x1[0]) ** 2. + (x2[1] - x1[1]) ** 2.)
         return length
 
@@ -118,8 +127,9 @@ class Rod2D(Element):
         (Rl = T * Rg)
         :return:   t  - beam transformation matrix in 2D (6, 6)
         """
-        x1 = self.ndA.coor()
-        x2 = self.ndB.coor()
+        nds = self.nodes
+        x1 = nds[0].coor
+        x2 = nds[1].coor
         length = math.sqrt((x2[0] - x1[0]) ** 2. + (x2[1] - x1[1]) ** 2.)
         c = (x2[0] - x1[0]) / length
         s = (x2[1] - x1[1]) / length
@@ -216,17 +226,17 @@ class Bar2D(Rod2D):
     """
     _counter = 0
 
-    def __init__(self, id: int, mat: str, propID: int, nodes: [int],
+    def __init__(self, id: int, mat: str, prop: str, nodes: [int],
                  releaseA: tuple = (0, 0, 0), releaseB: tuple = (0, 0, 0),
                  label: str = None):
-        super(Bar2D, self).__init__(id, mat, propID, nodes, label)
+        super(Bar2D, self).__init__(id, mat, prop, nodes, label)
         self.releases = [[bool(r) for r in releaseA], [bool(r) for r in releaseB]]
 
     def __del__(self):
         super(Bar2D, self).__del__()
 
     def __str__(self):
-        message = f'  {self.id:9n} {self._mat:9n} {self.pID:9n}'
+        message = f'  {self.id:9n} {self._mat:16s} {self._prop:16s}'
 
         if len(self.nodes) > 0:
             message += '  : '
@@ -249,7 +259,7 @@ class Bar2D(Rod2D):
 
     def __repr__(self):
         message = f"{type(self).__name__:s}(id={self.id:n}, mat={self._mat:s}, " \
-                  f"propID={self.pID:n}, nodes={str(self.nodes):s}, " \
+                  f"prop={self._prop:s}, nodes={str(self.nodes):s}, " \
                   f"releaseA={str(self.releases[0])}, releaseB={str(self.releases[1])}"
         if self.label is not None:
             message += f", label='{self.label:s}')"
@@ -266,7 +276,7 @@ class Bar2D(Rod2D):
         l2 = l * l
         l3 = l2 * l
         EA = self.mat.E() * self.prop.A
-        EI = self.mat.E() * self.prop.Iyy
+        EI = self.mat.E() * self.prop.I_11
         kuu = EA / l * np.array([[1., -1.],
                                  [-1., 1.]], dtype=float)
         kww = EI / l3 * np.array([[12., -12.],
@@ -362,20 +372,20 @@ class Elements(DataSet):
     def __init__(self, id: int = None, label: str = None):
         super(Elements, self).__init__(Element, id, label)
 
-    def add_Bar2D(self, id: int, mat: str, propID: int,
+    def add_Bar2D(self, id: int, mat: str, prop: str,
                   nodes: [int], releaseA: [int], releaseB: [int],
                   label: str = None):
-        self._add_object(Bar2D(id, mat, propID, nodes, releaseA, releaseB, label))
+        self._add_object(Bar2D(id, mat, prop, nodes, releaseA, releaseB, label))
 
-    def add_Rod2D(self, id: int, mat: str, propID: int,
+    def add_Rod2D(self, id: int, mat: str, prop: str,
                   nodes: [int], label: str = None):
-        self._add_object(Rod2D(id, mat, propID, nodes, label))
+        self._add_object(Rod2D(id, mat, prop, nodes, label))
 
 
 if __name__ == '__main__':
-    nds = Nodes2D()
+    nds = Nodes()
     for i in range(3):
-        nds.add(i + 1, i * 500., 0.)
+        nds.add(i + 1, [i * 500., 0.])
     print(str(nds))
     m = LinearISOElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
     print(str(m))
@@ -383,8 +393,8 @@ if __name__ == '__main__':
     print(str(p))
     els = Elements()
     for i in range(2):
-        els.add_Rod2D(m.label, p.id, i + 1, i + 2)
-        els.add_Bar2D(m.label, p.id, i + 1, i + 2,
+        els.add_Rod2D(m.label, p.label, [i + 1, i + 2])
+        els.add_Bar2D(m.label, p.label, [i + 1, i + 2],
                       [0, 0, 0], [0, 0, 0])
     print(str(els))
     pass

@@ -302,7 +302,7 @@ class DataSet(Data):
     def __repr__(self):
         message = f"{type(self).__name__:s}(id={self.id:n}, label='{self.label:s}')"
         for obj in self.objects:
-            message += f'\n{type(self).__name__:s}.getID({self.id:n})._add_obj({repr(obj):s})'
+            message += f'\n{type(self).__name__:s}.getID({self.id:n})._add_object({repr(obj):s})'
         return message
 
     def __str__(self):
