@@ -377,7 +377,7 @@ if __name__ == '__main__':
     for i in range(3):
         nds.add(i + 1, i * 500., 0.)
     print(str(nds))
-    m = LinearElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
+    m = LinearISOElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
     print(str(m))
     p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
     print(str(p))

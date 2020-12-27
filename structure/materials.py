@@ -19,7 +19,7 @@ class Material(Data):
         super(Material, self).__del__()
 
 
-class LinearElastic(Material):
+class LinearISOElastic(Material):
     _counter = 0
 
     @staticmethod
@@ -62,7 +62,7 @@ class LinearElastic(Material):
         self._E = self.convert_to_ndarray(youngs_modulus)
         self._nu = self.convert_to_ndarray(poissons_ratio)
         self._alpha = self.convert_to_ndarray(thermal_expansion_coefficient)
-        super(LinearElastic, self).__init__(label=label)
+        super(LinearISOElastic, self).__init__(label=label)
 
     def ro(self, temperature: float = 0.0):
         return self.temperature_dependent(self._ro, temperature)
@@ -80,7 +80,7 @@ class LinearElastic(Material):
         return self.temperature_dependent(self._alpha, temperature)
 
     def __del__(self):
-        super(LinearElastic, self).__del__()
+        super(LinearISOElastic, self).__del__()
 
     def __repr__(self):
         return f"{type(self).__name__:s}(label='{self.label:s}', " \
@@ -89,7 +89,7 @@ class LinearElastic(Material):
                f"thermal_expansion_coefficient={eng(self._alpha):s})"
 
     def __str__(self):
-        retval = super(LinearElastic, self).__str__().split('\n')
+        retval = super(LinearISOElastic, self).__str__().split('\n')
         end = retval[-1]
         retval = retval[:-1]
         retval.append('  $DENSITY')
@@ -117,13 +117,3 @@ class Materials(DataSet):
 
     def __init__(self, id: int = None, label: str = None):
         super(Materials, self).__init__(Material, id, label)
-
-    # TODO:
-    def __repr__(self):
-        message = f"{type(self).__name__:s}(id={self.id:n}, label='{self.label:s}')"
-        for obj in self.objects:
-            message += f'\n{type(self).__name__:s}.getID({self.id:n})._add_obj({repr(obj):s})'
-        return message
-
-    def __str__(self):
-        return '\n'.join([str(mat) for mat in self]) + '\n'

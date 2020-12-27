@@ -13,7 +13,7 @@ class Element_Test(unittest.TestCase):
         nds = Nodes2D()
         for i in range(3):
             nds.add(i + 1, i * 500., 0.)
-        m = LinearElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
+        m = LinearISOElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
         p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
         els = Elements()
         with self.assertRaises(DuplicateIDError):
@@ -25,7 +25,7 @@ class Element_Test(unittest.TestCase):
         nds = Nodes2D()
         for i in range(4):
             nds.add(i + 1, i * 500., 0.)
-        m = LinearElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
+        m = LinearISOElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
         p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
         els = Elements()
         els.add_Bar2D(1, m.id, p.id, (1, 2),
@@ -44,7 +44,7 @@ class Bar2D_Test(unittest.TestCase):
         nds = Nodes2D()
         for i in range(11):
             nds.add(i + 1, i * 100., 0.)
-        m = LinearElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
+        m = LinearISOElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
         p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
         els = Elements()
         for i in range(10):
@@ -61,7 +61,7 @@ class Bar2D_Test(unittest.TestCase):
         nds = Nodes2D()
         for i in range(11):
             nds.add(i + 1, i * 100., 0.)
-        m = LinearElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
+        m = LinearISOElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
         p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
         els = Elements()
         for i in range(10):
@@ -105,7 +105,7 @@ class Rod2D_Test(unittest.TestCase):
         nds = Nodes2D()
         for i in range(11):
             nds.add(i + 1, i * 100., 0.)
-        m = LinearElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
+        m = LinearISOElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
         p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
         els = Elements()
         for i in range(10):
@@ -123,7 +123,7 @@ class Rod2D_Test(unittest.TestCase):
         nds = Nodes2D()
         for i in range(11):
             nds.add(i + 1, i * 100., 0.)
-        m = LinearElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
+        m = LinearISOElastic('steel', 7.85E-9, 210.0E6, 0.3, 1.2E-5)
         p = CrossSectionBeam2D(1, 'beam', 2124.0, 3492243.0, 72755.0, 756.0, 0.0)
         els = Elements()
         for i in range(10):
