@@ -4,9 +4,10 @@
 # Scipy: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csgraph.reverse_cuthill_mckee.html#scipy.sparse.csgraph.reverse_cuthill_mckee
 # Matplotlib plot sparse matrix: https://matplotlib.org/3.1.1/gallery/images_contours_and_fields/spy_demos.html#sphx-glr-gallery-images-contours-and-fields-spy-demos-py
 
+import matplotlib.pyplot as plt
 import numpy as np
-from scipy.sparse import csr_matrix
-from scipy.sparse.csgraph import reverse_cuthill_mckee
+from scipy.sparse import csr_matrix, csc_matrix
+from scipy.sparse.csgraph import reverse_cuthill_mckee, breadth_first_order
 
 
 def getDegree(Graph):
@@ -59,17 +60,22 @@ def RCM_loop(deg, start, adj, pivots, R):
         return R
 
 
-def test():
-    """
-    test the RCM loop
-    """
-    print('Script solution:')
+def test_data():
     A = np.diag(np.ones(8))
     nzc = [[4], [2, 5, 7], [1, 4], [6], [0, 2], [1, 7], [3], [1, 5]]
 
     for i in range(len(nzc)):
         for j in nzc[i]:
             A[i, j] = 1
+    return A
+
+
+def test_script(A: np.ndarray):
+    """
+    test the RCM loop
+    """
+    print('Script solution:')
+
     print(A)
     # define the Result queue
     R = ["C"] * A.shape[0]
@@ -78,60 +84,69 @@ def test():
     digar = np.array(degree)
     pivots = list(np.where(digar == digar.min())[0])
     inl = []
-    Res = np.array(RCM_loop(degree, 0, adj, pivots, inl))
+    perm = np.array(RCM_loop(degree, 0, adj, pivots, inl))
     print(degree)
     print(adj)
-    print("solution:", list(Res))
+    print("solution:", list(perm))
     print("correct:", [6, 3, 7, 5, 1, 2, 4, 0])
-    # B = A[Res, Res]
+    # B = A[perm, perm]
     B = np.array(A)
     for i in range(B.shape[0]):
-        B[:, i] = B[Res, i]
+        B[:, i] = B[perm, i]
     for i in range(B.shape[0]):
-        B[i, :] = B[i, Res]
+        B[i, :] = B[i, perm]
     print(B)
-    return csr_matrix(A), csr_matrix(B)
+    return csr_matrix(B), perm
 
 
-def test2():
-    print('SciPy solution:')
-    A = np.diag(np.ones(8))
-    nzc = [[4], [2, 5, 7], [1, 4], [6], [0, 2], [1, 7], [3], [1, 5]]
+def test_csr(A: np.ndarray):
+    print('SciPy CSR solution:')
 
-    for i in range(len(nzc)):
-        for j in nzc[i]:
-            A[i, j] = 1
+    print(A)
+    A = csr_matrix(A)
+    perm = reverse_cuthill_mckee(A, False)
+    print("solution:", list(perm))
+    print("correct:", [6, 3, 7, 5, 1, 2, 4, 0])
+    B = A[np.ix_(perm, perm)]
+    print(B.todense())
+    return B, perm
+
+
+def test_csc(A: np.ndarray):
+    print('SciPy CSC solution:')
+
+    print(A)
+    A = csc_matrix(A)
+    perm = reverse_cuthill_mckee(A, False)
+    print("solution:", list(perm))
+    print("correct:", [6, 3, 7, 5, 1, 2, 4, 0])
+    B = A[np.ix_(perm, perm)]
+    print(B.A)
+    return B, perm
+
+
+def test_breadth_first(A: np.ndarray, index: int = 0):
+    print('SciPy breadth first solution:')
     print(A)
 
-    A = csr_matrix(A)
-    Res = reverse_cuthill_mckee(A, False)
-    print("solution:", list(Res))
+    A = csc_matrix(A)
+    perm = breadth_first_order(A, index, directed=False, return_predecessors=False)
+    print("solution:", list(perm))
     print("correct:", [6, 3, 7, 5, 1, 2, 4, 0])
-    B = A[np.ix_(Res, Res)]
+    B = A[np.ix_(perm, perm)]
     print(B.todense())
-    return A, B
+    return B, perm
 
 
 def plot_results():
-    import matplotlib.pyplot as plt
-    import numpy as np
+    cases = [test_script, test_csc]
+    fig, axs = plt.subplots(len(cases), 2)
 
-    fig, axs = plt.subplots(2, 2)
-    ax1 = axs[0, 0]
-    ax2 = axs[0, 1]
-    ax3 = axs[1, 0]
-    ax4 = axs[1, 1]
-
-    x = np.random.randn(20, 20)
-    A1, B1 = test()
-    A2, B2 = test2()
-
-    # ax1.spy(A1, markersize=5)
-    ax1.spy(A1)
-    ax2.spy(B1)
-
-    ax3.spy(A2)
-    ax4.spy(B2)
+    for i, case in enumerate(cases):
+        A = test_data()
+        B, perm = case(A)
+        axs[i, 0].spy(csc_matrix(A))  # ,markersize=5, precision=0.1)
+        axs[i, 1].spy(B, color='red', marker="s")
 
     plt.show()
 
