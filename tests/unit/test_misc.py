@@ -36,16 +36,18 @@ class TestData(unittest.TestCase):
 
     def test_add_del(self):
         d = Data(id=1, label='test data')
-        self.assertEqual(Data.instances(), 1)
+        self.assertEqual(Data.count(), 1)
         self.assertTrue(Data.id_exists(1))
         del d
-        self.assertEqual(Data.instances(), 0)
+        self.assertEqual(Data.count(), 0)
         self.assertFalse(Data.id_exists(1))
 
     def test_duplicate(self):
+        Data.set_locks(id_lock='unique', label_lock=None)
         d1 = Data(id=1, label='test data')
         with self.assertRaises(DuplicateIDError):
             d2 = Data(id=d1.id, label='test data 2')
+        Data.set_locks(id_lock=None, label_lock=None)
 
     def test_next_free_id(self):
         d = Data(id=100, label='test data')
@@ -97,6 +99,7 @@ class TestData(unittest.TestCase):
 
 class TestDataSet(unittest.TestCase):
     def test_init(self):
+        DataSet.set_locks(id_lock='unique', label_lock='unique')
         ds1 = DataSet(Data)
         self.assertTrue(ds1.id > 0)
         self.assertTrue(ds1.label != '')
@@ -104,6 +107,7 @@ class TestDataSet(unittest.TestCase):
             ds2 = DataSet(Data, id=ds1.id)
         with self.assertRaises(DuplicateLabelError):
             ds3 = DataSet(Data, label=ds1.label)
+        DataSet.set_locks(id_lock=None, label_lock=None)
 
     def test_collect(self):
         ds1 = DataSet(Data)
@@ -162,16 +166,16 @@ class TestDataSet(unittest.TestCase):
         for i in range(num):
             ds._add_object(Data(id=i + 1))
         expected_reply = '''DataSet(id=1, label='test')
-DataSet.getID(1)._add_obj(Data(id=1))
-DataSet.getID(1)._add_obj(Data(id=2))
-DataSet.getID(1)._add_obj(Data(id=3))
-DataSet.getID(1)._add_obj(Data(id=4))
-DataSet.getID(1)._add_obj(Data(id=5))
-DataSet.getID(1)._add_obj(Data(id=6))
-DataSet.getID(1)._add_obj(Data(id=7))
-DataSet.getID(1)._add_obj(Data(id=8))
-DataSet.getID(1)._add_obj(Data(id=9))
-DataSet.getID(1)._add_obj(Data(id=10))'''
+DataSet.getID(1)._add_object(Data(id=1))
+DataSet.getID(1)._add_object(Data(id=2))
+DataSet.getID(1)._add_object(Data(id=3))
+DataSet.getID(1)._add_object(Data(id=4))
+DataSet.getID(1)._add_object(Data(id=5))
+DataSet.getID(1)._add_object(Data(id=6))
+DataSet.getID(1)._add_object(Data(id=7))
+DataSet.getID(1)._add_object(Data(id=8))
+DataSet.getID(1)._add_object(Data(id=9))
+DataSet.getID(1)._add_object(Data(id=10))'''
         self.assertEqual(repr(ds), expected_reply)
 
     def test_str(self):
